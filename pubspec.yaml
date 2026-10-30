@@ -1,0 +1,22 @@
+name: corewms_app
+description: "App operacional do CoreWMS"
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.7
+
+dependencies:
+  dio: ^5.11.1
+  flutter:
+    sdk: flutter
+  flutter_secure_storage: ^11.2.0
+  provider: ^6.1.5+1
+  shared_preferences: ^2.5.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+flutter:
+  uses-material-design: true
