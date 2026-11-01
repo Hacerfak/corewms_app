@@ -320,7 +320,7 @@ class _SplitHuDialogState extends State<SplitHuDialog> {
 
               // Seletor de Embalagens cadastradas no Produto
               DropdownButtonFormField<String>(
-                value:
+                initialValue:
                     productPacks.any(
                       (p) => p.packagingTypeId == _selectedPackagingTypeId,
                     )

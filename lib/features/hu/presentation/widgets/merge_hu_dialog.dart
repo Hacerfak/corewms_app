@@ -561,12 +561,14 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
                         ),
                       ),
                       validator: (v) {
-                        if (v == null || v.trim().isEmpty)
+                        if (v == null || v.trim().isEmpty) {
                           return 'Informe o valor';
+                        }
                         final val = double.tryParse(v.replaceAll(',', '.'));
                         if (val == null || val <= 0) return 'Inválido';
-                        if (val > maxAvailable)
+                        if (val > maxAvailable) {
                           return 'Máx: ${maxAvailable.toStringAsFixed(0)}';
+                        }
                         return null;
                       },
                     ),
