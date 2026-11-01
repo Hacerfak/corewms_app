@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 import '../data/auth_models.dart';
@@ -61,14 +62,12 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _repository.login(email, password);
-      _user = await _repository.getUserPermissions();
+      _user = await _repository.login(email, password);
 
       if (_user!.companies.isEmpty) {
-        throw Exception('Usuário não possui vínculo com nenhuma empresa.');
+        throw Exception('Utilizador sem vínculo a qualquer empresa.');
       }
 
-      // Se possui apenas 1 empresa vinculada, seleciona automaticamente
       if (_user!.companies.length == 1) {
         await selectCompany(_user!.companies.first);
       } else {
@@ -76,10 +75,26 @@ class AuthProvider extends ChangeNotifier {
         notifyListeners();
       }
       return true;
-    } catch (e) {
-      _errorMessage = e is Exception
-          ? e.toString().replaceAll('Exception: ', '')
-          : 'Erro ao realizar login.';
+    } catch (e, stack) {
+      debugPrint('[LOGIN ERROR]: $e');
+      debugPrint('[LOGIN STACK]: $stack');
+
+      if (e is DioException) {
+        final serverMessage = e.response?.data is Map
+            ? (e.response?.data['message'] ??
+                  e.response?.data['Message'] ??
+                  e.response?.data['error'])
+            : null;
+
+        _errorMessage =
+            serverMessage?.toString() ??
+            (e.type == DioExceptionType.connectionError
+                ? 'Sem ligação ao servidor. Verifique a rede Wi-Fi.'
+                : 'Falha na comunicação com a API (${e.response?.statusCode ?? "Rede"}).');
+      } else {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+      }
+
       _status = AuthStatus.unauthenticated;
       notifyListeners();
       return false;
@@ -98,6 +113,11 @@ class AuthProvider extends ChangeNotifier {
     _status = AuthStatus.authenticated;
 
     _isLoading = false;
+    notifyListeners();
+  }
+
+  void switchCompany() {
+    _status = AuthStatus.selectingCompany;
     notifyListeners();
   }
 

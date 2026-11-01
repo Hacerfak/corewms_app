@@ -7,6 +7,7 @@ class StorageService {
   static const _refreshTokenKey = 'refresh_token';
   static const _companyIdKey = 'selected_company_id';
   static const _companyNameKey = 'selected_company_name';
+  static const _userDataKey = 'user_data_cache';
 
   Future<void> saveTokens({
     required String accessToken,
@@ -30,6 +31,10 @@ class StorageService {
 
   Future<String?> getCompanyId() => _storage.read(key: _companyIdKey);
   Future<String?> getCompanyName() => _storage.read(key: _companyNameKey);
+
+  Future<void> saveUserData(String jsonStr) =>
+      _storage.write(key: _userDataKey, value: jsonStr);
+  Future<String?> getUserData() => _storage.read(key: _userDataKey);
 
   Future<void> clearAll() async {
     await _storage.deleteAll();

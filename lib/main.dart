@@ -9,6 +9,8 @@ import 'features/auth/presentation/company_selection_screen.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/home/presentation/home_screen.dart';
 import 'core/scanner/scanner_service.dart';
+import 'features/hu/data/hu_repository.dart';
+import 'features/hu/presentation/hu_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,6 +19,7 @@ void main() async {
   final api = ApiClient(storage);
   final authRepository = AuthRepository(api, storage);
   final scannerService = ScannerService()..initialize();
+  final huRepository = HuRepository(api);
 
   runApp(
     MultiProvider(
@@ -24,6 +27,9 @@ void main() async {
         Provider<ScannerService>.value(value: scannerService),
         ChangeNotifierProvider(
           create: (_) => AuthProvider(authRepository, storage)..checkSession(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => HuProvider(huRepository), // <-- Provedor de HU
         ),
       ],
       child: const CoreWmsApp(),

@@ -50,7 +50,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Icon(
-                    Icons.inventory_2_rounded,
+                    Icons.warehouse_outlined,
                     size: 64,
                     color: Color(0xFF2563EB),
                   ),
