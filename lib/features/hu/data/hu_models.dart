@@ -15,6 +15,7 @@ class HandlingUnitModel {
   final DateTime? manufactureDate;
   final String status;
   final String qualityStatus;
+  final String? packagingTypeId; // <-- ID do Tipo de Embalagem da HU
   final String? packagingTypeCode;
   final String? packagingTypeDescription;
   final double? unitNetWeight;
@@ -48,6 +49,7 @@ class HandlingUnitModel {
     this.manufactureDate,
     required this.status,
     required this.qualityStatus,
+    this.packagingTypeId,
     this.packagingTypeCode,
     this.packagingTypeDescription,
     this.unitNetWeight,
@@ -63,7 +65,6 @@ class HandlingUnitModel {
     this.unitValue,
   });
 
-  /// REGRA: Apenas HUs disponíveis no Armazém ou Doca podem receber ações operacionais
   bool get canPerformActions {
     if (currentQuantity <= 0) return false;
     final s = status.toUpperCase().trim();
@@ -95,6 +96,9 @@ class HandlingUnitModel {
     final packDesc =
         json['packagingTypeDescription']?.toString() ??
         json['packagingType']?['description']?.toString();
+    final packTypeId =
+        json['packagingTypeId']?.toString() ??
+        json['packagingType']?['id']?.toString();
 
     return HandlingUnitModel(
       id: json['id']?.toString() ?? '',
@@ -128,6 +132,7 @@ class HandlingUnitModel {
           : null,
       status: json['status']?.toString() ?? 'Stored',
       qualityStatus: json['qualityStatus']?.toString() ?? 'Available',
+      packagingTypeId: packTypeId,
       packagingTypeCode: packCode,
       packagingTypeDescription: packDesc,
       unitNetWeight: json['unitNetWeight'] != null
@@ -182,6 +187,7 @@ class HandlingUnitModel {
       manufactureDate: manufactureDate,
       status: status,
       qualityStatus: qualityStatus,
+      packagingTypeId: packagingTypeId,
       packagingTypeCode: packagingTypeCode,
       packagingTypeDescription: packagingTypeDescription,
       unitNetWeight: unitNetWeight,
@@ -218,6 +224,126 @@ class LocationModel {
       fullPath: json['fullPath']?.toString() ?? json['code']?.toString() ?? '',
       code: json['code']?.toString() ?? '',
       role: json['storageTypeName']?.toString() ?? json['role']?.toString(),
+    );
+  }
+}
+
+/// DTO retornado por /api/products/{productId}/packagings
+class ProductPackagingOption {
+  final String id;
+  final String packagingTypeId;
+  final String code;
+  final String description;
+  final double conversionFactor;
+  final String? barcode;
+  final double grossWeight;
+  final double netWeight;
+  final bool allowFractionalPicking;
+
+  ProductPackagingOption({
+    required this.id,
+    required this.packagingTypeId,
+    required this.code,
+    required this.description,
+    required this.conversionFactor,
+    this.barcode,
+    required this.grossWeight,
+    required this.netWeight,
+    required this.allowFractionalPicking,
+  });
+
+  factory ProductPackagingOption.fromJson(Map<String, dynamic> json) {
+    return ProductPackagingOption(
+      id: json['id']?.toString() ?? '',
+      packagingTypeId: json['packagingTypeId']?.toString() ?? '',
+      code: json['code']?.toString() ?? '',
+      description:
+          json['description']?.toString() ?? json['code']?.toString() ?? '',
+      conversionFactor: (json['conversionFactor'] ?? 1).toDouble(),
+      barcode: json['barcode']?.toString(),
+      grossWeight: (json['grossWeight'] ?? 0).toDouble(),
+      netWeight: (json['netWeight'] ?? 0).toDouble(),
+      allowFractionalPicking: json['allowFractionalPicking'] == true,
+    );
+  }
+}
+
+class CreatedHuSummary {
+  final String id;
+  final String lpn;
+  final double quantity;
+
+  CreatedHuSummary({
+    required this.id,
+    required this.lpn,
+    required this.quantity,
+  });
+
+  factory CreatedHuSummary.fromJson(Map<String, dynamic> json) {
+    return CreatedHuSummary(
+      id: json['id']?.toString() ?? '',
+      lpn: json['lpn']?.toString() ?? '',
+      quantity: (json['quantity'] ?? 0).toDouble(),
+    );
+  }
+}
+
+class SplitHuResult {
+  final String message;
+  final String sourceLpn;
+  final double sourceRemaining;
+  final List<CreatedHuSummary> createdHus;
+
+  SplitHuResult({
+    required this.message,
+    required this.sourceLpn,
+    required this.sourceRemaining,
+    required this.createdHus,
+  });
+
+  factory SplitHuResult.fromJson(Map<String, dynamic> json) {
+    final rawCreated = json['createdHus'] as List<dynamic>? ?? [];
+    return SplitHuResult(
+      message:
+          json['message']?.toString() ?? 'Transbordo concluído com sucesso!',
+      sourceLpn: json['sourceLpn']?.toString() ?? '',
+      sourceRemaining: (json['sourceRemaining'] ?? 0).toDouble(),
+      createdHus: rawCreated
+          .whereType<Map<String, dynamic>>()
+          .map((h) => CreatedHuSummary.fromJson(h))
+          .toList(),
+    );
+  }
+}
+
+class MergeHuResult {
+  final String message;
+  final String sourceLpn;
+  final double sourceRemaining;
+  final String sourceStatus;
+  final String destinationLpn;
+  final double destinationQuantity;
+
+  MergeHuResult({
+    required this.message,
+    required this.sourceLpn,
+    required this.sourceRemaining,
+    required this.sourceStatus,
+    required this.destinationLpn,
+    required this.destinationQuantity,
+  });
+
+  bool get wasSourceFullyConsumed => sourceRemaining <= 0;
+
+  factory MergeHuResult.fromJson(Map<String, dynamic> json) {
+    return MergeHuResult(
+      message:
+          json['message']?.toString() ?? 'Agrupamento realizado com sucesso!',
+      sourceLpn: json['sourceLpn']?.toString() ?? '',
+      sourceRemaining: (json['sourceRemaining'] ?? 0).toDouble(),
+      sourceStatus: json['sourceStatus']?.toString() ?? 'Stored',
+      destinationLpn: json['destinationLpn']?.toString() ?? '',
+      destinationQuantity: (json['destinationQuantity'] ?? 0).toDouble(),
     );
   }
 }

@@ -16,6 +16,15 @@ class HuProvider extends ChangeNotifier {
   bool _isMoving = false;
   bool get isMoving => _isMoving;
 
+  bool _isSplitting = false;
+  bool get isSplitting => _isSplitting;
+
+  List<ProductPackagingOption> _productPackagings = [];
+  List<ProductPackagingOption> get productPackagings => _productPackagings;
+
+  bool _isMerging = false;
+  bool get isMerging => _isMerging;
+
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
@@ -56,6 +65,10 @@ class HuProvider extends ChangeNotifier {
 
   Future<LocationModel?> findLocation(String code) =>
       _repository.getLocationByCode(code);
+
+  /// Consulta uma HU por LPN sem alterar o estado da HU ativa no ecrã principal
+  Future<HandlingUnitModel?> findHuByLpn(String lpn) =>
+      _repository.getHuByLpn(lpn);
 
   Future<bool> executeMove({
     required String targetLocationId,
@@ -99,5 +112,90 @@ class HuProvider extends ChangeNotifier {
     _errorMessage = null;
     _isLoading = false;
     notifyListeners();
+  }
+
+  Future<void> loadProductPackagings(String productId) async {
+    _productPackagings = [];
+    notifyListeners();
+    _productPackagings = await _repository.getProductPackagings(productId);
+    notifyListeners();
+  }
+
+  Future<SplitHuResult?> executeSplit({
+    required double quantity,
+    String? packagingTypeId,
+  }) async {
+    if (_currentHu == null) return null;
+
+    _isSplitting = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final result = await _repository.splitHu(
+        sourceHuId: _currentHu!.id,
+        quantity: quantity,
+        packagingTypeId: packagingTypeId,
+      );
+
+      // Atualiza o saldo restante da HU mãe após o split
+      await searchHu(_currentHu!.lpn);
+
+      return result;
+    } catch (e) {
+      if (e is DioException) {
+        _errorMessage = e.response?.data is Map
+            ? (e.response?.data['message'] ??
+                  e.response?.data['Message'] ??
+                  'Falha ao desmembrar HU.')
+            : 'Erro ao conectar à API para realizar o split.';
+      } else {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+      }
+      notifyListeners();
+      return null;
+    } finally {
+      _isSplitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<MergeHuResult?> executeMerge({
+    required String destinationLpn,
+    required double quantity,
+  }) async {
+    if (_currentHu == null) return null;
+
+    _isMerging = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final result = await _repository.mergeHu(
+        sourceHuId: _currentHu!.id,
+        destinationLpn: destinationLpn,
+        quantity: quantity,
+      );
+
+      // Atualiza os dados da HU atual para refletir o novo saldo ou status consumido
+      await searchHu(_currentHu!.lpn);
+
+      return result;
+    } catch (e) {
+      if (e is DioException) {
+        _errorMessage = e.response?.data is Map
+            ? (e.response?.data['message'] ??
+                  e.response?.data['Message'] ??
+                  'Falha ao agrupar HUs.')
+            : 'Erro ao conectar à API para realizar o merge.';
+      } else {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+      }
+      notifyListeners();
+      return null;
+    } finally {
+      _isMerging = false;
+      notifyListeners();
+    }
   }
 }

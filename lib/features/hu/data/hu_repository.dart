@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../core/api/api_client.dart';
 import 'hu_models.dart';
@@ -96,5 +97,71 @@ class HuRepository {
     };
 
     await _api.dio.post('/api/inventory/handling-units/move', data: payload);
+  }
+
+  /// Busca as embalagens configuradas especificamente para o produto da HU
+  Future<List<ProductPackagingOption>> getProductPackagings(
+    String productId,
+  ) async {
+    try {
+      final response = await _api.dio.get(
+        '/api/products/$productId/packagings',
+      );
+      final data = response.data;
+      if (data is List) {
+        return data
+            .whereType<Map<String, dynamic>>()
+            .map((item) => ProductPackagingOption.fromJson(item))
+            .toList();
+      }
+    } catch (e) {
+      debugPrint('[WARN] Falha ao carregar embalagens do produto: $e');
+    }
+    return [];
+  }
+
+  /// Executa o desmembramento (Split) gerando a nova HU com os dados herdados
+  Future<SplitHuResult> splitHu({
+    required String sourceHuId,
+    required double quantity,
+    String? packagingTypeId,
+  }) async {
+    final payload = {
+      'sourceHandlingUnitId': sourceHuId,
+      'newHandlingUnits': [
+        {
+          'quantity': quantity,
+          if (packagingTypeId != null && packagingTypeId.isNotEmpty)
+            'packagingTypeId': packagingTypeId,
+        },
+      ],
+    };
+
+    final response = await _api.dio.post(
+      '/api/inventory/handling-units/split',
+      data: payload,
+    );
+
+    return SplitHuResult.fromJson(Map<String, dynamic>.from(response.data));
+  }
+
+  /// Executa o agrupamento (Merge) entre duas HUs
+  Future<MergeHuResult> mergeHu({
+    required String sourceHuId,
+    required String destinationLpn,
+    required double quantity,
+  }) async {
+    final payload = {
+      'sourceHandlingUnitId': sourceHuId,
+      'destinationLpn': destinationLpn.trim().toUpperCase(),
+      'quantity': quantity,
+    };
+
+    final response = await _api.dio.post(
+      '/api/inventory/handling-units/merge',
+      data: payload,
+    );
+
+    return MergeHuResult.fromJson(Map<String, dynamic>.from(response.data));
   }
 }

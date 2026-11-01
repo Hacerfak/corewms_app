@@ -9,6 +9,10 @@ import '../../../core/scanner/scanner_service.dart';
 import '../data/hu_models.dart';
 import 'hu_provider.dart';
 import 'widgets/move_hu_dialog.dart';
+import 'widgets/split_hu_dialog.dart';
+import 'widgets/split_success_dialog.dart';
+import 'widgets/merge_hu_dialog.dart';
+import 'widgets/merge_success_dialog.dart';
 
 class HuConsultationScreen extends StatefulWidget {
   final String? initialLpn;
@@ -94,6 +98,44 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
     }
   }
 
+  Future<void> _openSplitDialog(HandlingUnitModel hu) async {
+    final result = await showDialog<SplitHuResult>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => SplitHuDialog(hu: hu),
+    );
+
+    if (result != null && mounted) {
+      final selectedLpn = await showDialog<String>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => SplitSuccessDialog(result: result),
+      );
+
+      // Se o operador desejar consultar a nova HU filha criada imediatamente:
+      if (selectedLpn != null && selectedLpn.isNotEmpty && mounted) {
+        _lpnController.text = selectedLpn;
+        context.read<HuProvider>().searchHu(selectedLpn);
+      }
+    }
+  }
+
+  Future<void> _openMergeDialog(HandlingUnitModel hu) async {
+    final result = await showDialog<MergeHuResult>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => MergeHuDialog(hu: hu),
+    );
+
+    if (result != null && mounted) {
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => MergeSuccessDialog(result: result),
+      );
+    }
+  }
+
   Color _getQualityColor(String quality) {
     switch (quality.toUpperCase()) {
       case 'AVAILABLE':
@@ -153,7 +195,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
       case 'PICKING':
         return 'Em Separação';
       case 'CONSUMED':
-        return 'Consumido / Baixado';
+        return 'Finalizado';
       case 'SHIPPED':
         return 'Expedido';
       default:
@@ -999,29 +1041,13 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                   title: 'Split de HU',
                                   icon: Icons.call_split_rounded,
                                   color: const Color(0xFF8B5CF6),
-                                  onTap: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Rotina de Split será implementada a seguir.',
-                                        ),
-                                      ),
-                                    );
-                                  },
+                                  onTap: () => _openSplitDialog(hu),
                                 ),
                                 _buildSecondaryActionButton(
                                   title: 'Merge de HU',
                                   icon: Icons.call_merge_rounded,
                                   color: const Color(0xFF6366F1),
-                                  onTap: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Rotina de Merge será implementada a seguir.',
-                                        ),
-                                      ),
-                                    );
-                                  },
+                                  onTap: () => _openMergeDialog(hu),
                                 ),
                                 _buildSecondaryActionButton(
                                   title: 'Qualidade / Avaria',
