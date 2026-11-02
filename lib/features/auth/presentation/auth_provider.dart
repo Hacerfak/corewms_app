@@ -28,6 +28,7 @@ class AuthProvider extends ChangeNotifier {
 
   AuthProvider(this._repository, this._storage);
 
+  /// Valida sessão existente ao abrir o aplicativo
   Future<void> checkSession() async {
     _isLoading = true;
     notifyListeners();
@@ -38,12 +39,18 @@ class AuthProvider extends ChangeNotifier {
         _status = AuthStatus.unauthenticated;
       } else {
         final companyId = await _storage.getCompanyId();
-        _user = await _repository.getUserPermissions();
 
         if (companyId != null && companyId.isNotEmpty) {
+          // Empresa já selecionada anteriormente: busca permissões dela
+          final permissions = await _repository.fetchCompanyPermissions(
+            companyId,
+          );
+          _user = await _repository.getCachedUser(permissions: permissions);
           _selectedCompanyName = await _storage.getCompanyName();
           _status = AuthStatus.authenticated;
         } else {
+          // Token válido, mas sem empresa escolhida: redireciona para seleção
+          _user = await _repository.getCachedUser(permissions: const []);
           _status = AuthStatus.selectingCompany;
         }
       }
@@ -56,6 +63,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Realiza o login. Se possuir 1 empresa só, seleciona automaticamente.
   Future<bool> login(String email, String password) async {
     _isLoading = true;
     _errorMessage = null;
@@ -65,12 +73,14 @@ class AuthProvider extends ChangeNotifier {
       _user = await _repository.login(email, password);
 
       if (_user!.companies.isEmpty) {
-        throw Exception('Utilizador sem vínculo a qualquer empresa.');
+        throw Exception('Usuário sem vínculo com nenhuma empresa.');
       }
 
+      // Se possui apenas 1 empresa vinculada, seleciona e carrega permissões imediatamente
       if (_user!.companies.length == 1) {
         await selectCompany(_user!.companies.first);
       } else {
+        // Múltiplas empresas: vai para a tela de seleção sem chamar permissões ainda
         _status = AuthStatus.selectingCompany;
         notifyListeners();
       }
@@ -89,7 +99,7 @@ class AuthProvider extends ChangeNotifier {
         _errorMessage =
             serverMessage?.toString() ??
             (e.type == DioExceptionType.connectionError
-                ? 'Sem ligação ao servidor. Verifique a rede Wi-Fi.'
+                ? 'Sem conexão com o servidor. Verifique o Wi-Fi.'
                 : 'Falha na comunicação com a API (${e.response?.statusCode ?? "Rede"}).');
       } else {
         _errorMessage = e.toString().replaceAll('Exception: ', '');
@@ -104,19 +114,32 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Disparado ao tocar em uma empresa: busca as permissões daquela unidade e avança
   Future<void> selectCompany(UserCompany company) async {
     _isLoading = true;
     notifyListeners();
 
-    await _repository.selectCompany(company);
-    _selectedCompanyName = company.corporateName;
-    _status = AuthStatus.authenticated;
+    try {
+      final permissions = await _repository.selectCompany(company);
 
-    _isLoading = false;
-    notifyListeners();
+      if (_user != null) {
+        _user = _user!.copyWith(permissions: permissions);
+      }
+
+      _selectedCompanyName = company.corporateName;
+      _status = AuthStatus.authenticated;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
+  /// Retorna à tela de escolha de armazém/empresa e limpa permissões ativas
   void switchCompany() {
+    if (_user != null) {
+      _user = _user!.copyWith(permissions: const []);
+    }
+    _selectedCompanyName = null;
     _status = AuthStatus.selectingCompany;
     notifyListeners();
   }

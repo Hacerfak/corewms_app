@@ -46,6 +46,24 @@ class UserMeResponse {
     required this.permissions,
   });
 
+  UserMeResponse copyWith({
+    String? id,
+    String? name,
+    String? email,
+    bool? isMaster,
+    List<UserCompany>? companies,
+    List<String>? permissions,
+  }) {
+    return UserMeResponse(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      isMaster: isMaster ?? this.isMaster,
+      companies: companies ?? this.companies,
+      permissions: permissions ?? this.permissions,
+    );
+  }
+
   factory UserMeResponse.fromLoginData(
     Map<String, dynamic> json,
     List<String> perms,
@@ -53,9 +71,7 @@ class UserMeResponse {
     final userData = json['user'] is Map<String, dynamic>
         ? json['user'] as Map<String, dynamic>
         : json;
-
     final rawCompanies = json['companies'] ?? userData['companies'] ?? [];
-
     final companiesList = <UserCompany>[];
     if (rawCompanies is List) {
       for (final item in rawCompanies) {
@@ -66,7 +82,6 @@ class UserMeResponse {
         }
       }
     }
-
     final email =
         userData['email']?.toString() ?? json['email']?.toString() ?? '';
     final rawName =
@@ -76,7 +91,6 @@ class UserMeResponse {
         json['name']?.toString() ??
         json['userName']?.toString() ??
         '';
-
     final displayName = rawName.trim().isNotEmpty
         ? rawName.trim()
         : (email.isNotEmpty ? email.split('@').first : 'Usuário');
