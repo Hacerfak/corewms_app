@@ -13,6 +13,9 @@ import 'widgets/split_hu_dialog.dart';
 import 'widgets/split_success_dialog.dart';
 import 'widgets/merge_hu_dialog.dart';
 import 'widgets/merge_success_dialog.dart';
+import 'widgets/quality_hold_dialog.dart';
+import '../../printing/presentation/printing_provider.dart';
+import '../../printing/presentation/widgets/print_label_dialog.dart';
 
 class HuConsultationScreen extends StatefulWidget {
   final String? initialLpn;
@@ -60,6 +63,95 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
     if (_lpnController.text.trim().isNotEmpty) {
       _lpnFocus.unfocus();
       context.read<HuProvider>().searchHu(_lpnController.text.trim());
+    }
+  }
+
+  Future<void> _openReprintDialog(HandlingUnitModel hu) async {
+    final printed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => PrintLabelDialog(
+        title: 'Reimprimir Etiqueta da HU',
+        summaryWidget: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F172A),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFF334155)),
+          ),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'LPN:',
+                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                  ),
+                  Text(
+                    hu.lpn,
+                    style: const TextStyle(
+                      color: Color(0xFF38BDF8),
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'monospace',
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Produto / Qtd:',
+                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                  ),
+                  Text(
+                    '${hu.productSku} • ${hu.currentQuantity.toStringAsFixed(0)} ${hu.productBaseUnit}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        onConfirmPrint:
+            ({
+              required String stationName,
+              required String printerName,
+              required String templateId,
+              required int copies,
+            }) {
+              return context.read<PrintingProvider>().printHus(
+                huIds: [hu.id],
+                templateId: templateId,
+                stationName: stationName,
+                printerName: printerName,
+                copies: copies,
+              );
+            },
+      ),
+    );
+
+    if (printed == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: Color(0xFF10B981),
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text('Etiqueta enviada para a impressora!'),
+            ],
+          ),
+          duration: Duration(seconds: 2),
+        ),
+      );
     }
   }
 
@@ -132,6 +224,30 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
         context: context,
         barrierDismissible: false,
         builder: (_) => MergeSuccessDialog(result: result),
+      );
+    }
+  }
+
+  Future<void> _openQualityHoldDialog(HandlingUnitModel hu) async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => QualityHoldDialog(hu: hu),
+    );
+
+    if (result == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: Color(0xFFF59E0B),
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text('Ocorrência de qualidade registrada com sucesso!'),
+            ],
+          ),
+          duration: Duration(seconds: 2),
+        ),
       );
     }
   }
@@ -1038,28 +1154,28 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                               childAspectRatio: 2.4,
                               children: [
                                 _buildSecondaryActionButton(
-                                  title: 'Split de HU',
+                                  title: 'Dividir',
                                   icon: Icons.call_split_rounded,
                                   color: const Color(0xFF8B5CF6),
                                   onTap: () => _openSplitDialog(hu),
                                 ),
                                 _buildSecondaryActionButton(
-                                  title: 'Merge de HU',
+                                  title: 'Agrupar',
                                   icon: Icons.call_merge_rounded,
                                   color: const Color(0xFF6366F1),
                                   onTap: () => _openMergeDialog(hu),
                                 ),
                                 _buildSecondaryActionButton(
-                                  title: 'Qualidade / Avaria',
+                                  title: 'Avaria',
                                   icon: Icons.security_rounded,
                                   color: const Color(0xFFF59E0B),
-                                  onTap: () {},
+                                  onTap: () => _openQualityHoldDialog(hu),
                                 ),
                                 _buildSecondaryActionButton(
-                                  title: 'Reimprimir LPN',
+                                  title: 'Reimprimir',
                                   icon: Icons.print_outlined,
                                   color: const Color(0xFF64748B),
-                                  onTap: () {},
+                                  onTap: () => _openReprintDialog(hu),
                                 ),
                               ],
                             ),

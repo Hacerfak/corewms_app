@@ -11,6 +11,8 @@ import 'features/home/presentation/home_screen.dart';
 import 'core/scanner/scanner_service.dart';
 import 'features/hu/data/hu_repository.dart';
 import 'features/hu/presentation/hu_provider.dart';
+import 'features/printing/data/printing_repository.dart';
+import 'features/printing/presentation/printing_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +22,7 @@ void main() async {
   final authRepository = AuthRepository(api, storage);
   final scannerService = ScannerService()..initialize();
   final huRepository = HuRepository(api);
+  final printingRepository = PrintingRepository(api);
 
   runApp(
     MultiProvider(
@@ -30,6 +33,11 @@ void main() async {
         ),
         ChangeNotifierProvider(
           create: (_) => HuProvider(huRepository), // <-- Provedor de HU
+        ),
+        ChangeNotifierProvider(
+          create: (_) => PrintingProvider(
+            printingRepository,
+          ), // <-- Provedor Global de Impressão
         ),
       ],
       child: const CoreWmsApp(),

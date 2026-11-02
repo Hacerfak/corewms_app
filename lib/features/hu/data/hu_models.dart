@@ -1,3 +1,60 @@
+import 'dart:typed_data';
+
+/// Status alvo conforme o enum do backend (Inventory.Enums.QualityStatus)
+enum QualityStatusTarget {
+  damaged(3, 'Avaria', 'Dano físico / produto avariado ou violado'),
+  quarantine(2, 'Quarentena', 'Retenção técnica / bloqueio preventivo');
+
+  final int value;
+  final String label;
+  final String description;
+
+  const QualityStatusTarget(this.value, this.label, this.description);
+}
+
+/// Motivo retornado pelo endpoint GET /api/quality/reasons
+class QualityReasonOption {
+  final String id;
+  final String code;
+  final String description;
+  final bool isActive;
+
+  QualityReasonOption({
+    required this.id,
+    required this.code,
+    required this.description,
+    required this.isActive,
+  });
+
+  factory QualityReasonOption.fromJson(Map<String, dynamic> json) {
+    return QualityReasonOption(
+      id: json['id']?.toString() ?? '',
+      code: json['code']?.toString() ?? '',
+      description:
+          json['description']?.toString() ?? json['code']?.toString() ?? '',
+      isActive: json['isActive'] == true,
+    );
+  }
+}
+
+/// Evidência fotográfica para envio ao servidor
+class QualityImageAttachment {
+  final String fileName;
+  final String base64Data;
+  final Uint8List previewBytes;
+
+  QualityImageAttachment({
+    required this.fileName,
+    required this.base64Data,
+    required this.previewBytes,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'fileName': fileName,
+    'base64Data': base64Data,
+  };
+}
+
 class HandlingUnitModel {
   final String id;
   final String lpn;
