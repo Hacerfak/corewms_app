@@ -193,7 +193,9 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
           ),
         ),
         onConfirm: (data) async {
-          final success = await context.read<QualityProvider>().executeHold(
+          final qualityProvider = context.read<QualityProvider>();
+          final huProvider = context.read<HuProvider>();
+          final success = await qualityProvider.executeHold(
             handlingUnitIds: [hu.id],
             newStatus: data.status.value,
             reasonId: data.reasonId,
@@ -203,7 +205,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
           );
 
           if (success) {
-            await context.read<HuProvider>().searchHu(hu.lpn);
+            await huProvider.searchHu(hu.lpn);
           }
           return success;
         },
