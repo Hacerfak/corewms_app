@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/theme/app_theme.dart';
 import '../../data/printing_models.dart';
 import '../printing_provider.dart';
 
@@ -144,9 +145,10 @@ class _PrintLabelDialogState extends State<PrintLabelDialog> {
     final agents = provider.agents;
     final templates = provider.templates;
     final availablePrinters = _selectedAgent?.printers ?? [];
+    final isDark = context.isDark;
 
     return Dialog(
-      backgroundColor: const Color(0xFF1E293B), // Slate 800
+      backgroundColor: context.card,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       insetPadding: const EdgeInsets.all(16),
       child: SingleChildScrollView(
@@ -161,12 +163,15 @@ class _PrintLabelDialogState extends State<PrintLabelDialog> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
+                    color: const Color(0xFF0284C7)
+                        .withValues(alpha: isDark ? 0.2 : 0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     LucideIcons.printer,
-                    color: Color(0xFF38BDF8),
+                    color: isDark
+                        ? const Color(0xFF38BDF8)
+                        : const Color(0xFF0284C7),
                     size: 24,
                   ),
                 ),
@@ -177,16 +182,16 @@ class _PrintLabelDialogState extends State<PrintLabelDialog> {
                     children: [
                       Text(
                         widget.title,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: context.textPrimary,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const Text(
+                      Text(
                         'Despacho de comando ZPL para impressora',
                         style: TextStyle(
-                          color: Color(0xFF94A3B8),
+                          color: context.textSecondary,
                           fontSize: 11,
                         ),
                       ),
@@ -197,24 +202,47 @@ class _PrintLabelDialogState extends State<PrintLabelDialog> {
             ),
             const SizedBox(height: 16),
 
-            // Card com o resumo customizado do item que está sendo impresso
+            // Card com o resumo customizado do item que está a ser impresso
             widget.summaryWidget,
             const SizedBox(height: 14),
 
+            // Mensagem de Erro
             if (_localError != null || provider.errorMessage != null) ...[
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF450A0A),
+                  color: isDark
+                      ? const Color(0xFF450A0A)
+                      : const Color(0xFFFFF1F2),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFF991B1B)),
-                ),
-                child: Text(
-                  _localError ?? provider.errorMessage ?? '',
-                  style: const TextStyle(
-                    color: Color(0xFFFCA5A5),
-                    fontSize: 12,
+                  border: Border.all(
+                    color: isDark
+                        ? const Color(0xFF991B1B)
+                        : const Color(0xFFFECDD3),
                   ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      LucideIcons.circle_alert,
+                      size: 16,
+                      color: isDark
+                          ? const Color(0xFFFCA5A5)
+                          : const Color(0xFFE11D48),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _localError ?? provider.errorMessage ?? '',
+                        style: TextStyle(
+                          color: isDark
+                              ? const Color(0xFFFCA5A5)
+                              : const Color(0xFFBE123C),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 12),
@@ -226,19 +254,23 @@ class _PrintLabelDialogState extends State<PrintLabelDialog> {
                   ? _selectedAgent
                   : null,
               isExpanded: true,
-              dropdownColor: const Color(0xFF1E293B),
-              style: const TextStyle(color: Colors.white, fontSize: 13),
+              dropdownColor: context.card,
+              style: TextStyle(color: context.textPrimary, fontSize: 13),
               decoration: InputDecoration(
                 labelText: 'Estação de Impressão (Agente) *',
-                labelStyle: const TextStyle(
-                  color: Color(0xFF94A3B8),
+                labelStyle: TextStyle(
+                  color: context.textSecondary,
                   fontSize: 12,
                 ),
                 filled: true,
-                fillColor: const Color(0xFF0F172A),
+                fillColor: context.cardSubtle,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide.none,
+                  borderSide: BorderSide(color: context.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: context.border),
                 ),
               ),
               items: agents.map((agent) {
@@ -286,19 +318,23 @@ class _PrintLabelDialogState extends State<PrintLabelDialog> {
                   ? _selectedPrinter
                   : null,
               isExpanded: true,
-              dropdownColor: const Color(0xFF1E293B),
-              style: const TextStyle(color: Colors.white, fontSize: 13),
+              dropdownColor: context.card,
+              style: TextStyle(color: context.textPrimary, fontSize: 13),
               decoration: InputDecoration(
                 labelText: 'Impressora *',
-                labelStyle: const TextStyle(
-                  color: Color(0xFF94A3B8),
+                labelStyle: TextStyle(
+                  color: context.textSecondary,
                   fontSize: 12,
                 ),
                 filled: true,
-                fillColor: const Color(0xFF0F172A),
+                fillColor: context.cardSubtle,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide.none,
+                  borderSide: BorderSide(color: context.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: context.border),
                 ),
               ),
               items: availablePrinters.map((printer) {
@@ -320,19 +356,23 @@ class _PrintLabelDialogState extends State<PrintLabelDialog> {
                   ? _selectedTemplate
                   : null,
               isExpanded: true,
-              dropdownColor: const Color(0xFF1E293B),
-              style: const TextStyle(color: Colors.white, fontSize: 13),
+              dropdownColor: context.card,
+              style: TextStyle(color: context.textPrimary, fontSize: 13),
               decoration: InputDecoration(
                 labelText: 'Modelo da Etiqueta *',
-                labelStyle: const TextStyle(
-                  color: Color(0xFF94A3B8),
+                labelStyle: TextStyle(
+                  color: context.textSecondary,
                   fontSize: 12,
                 ),
                 filled: true,
-                fillColor: const Color(0xFF0F172A),
+                fillColor: context.cardSubtle,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide.none,
+                  borderSide: BorderSide(color: context.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: context.border),
                 ),
               ),
               items: templates.map((tmpl) {
@@ -351,10 +391,10 @@ class _PrintLabelDialogState extends State<PrintLabelDialog> {
             // 4. Quantidade de Cópias
             Row(
               children: [
-                const Text(
+                Text(
                   'Cópias:',
                   style: TextStyle(
-                    color: Color(0xFF94A3B8),
+                    color: context.textSecondary,
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
                   ),
@@ -362,17 +402,17 @@ class _PrintLabelDialogState extends State<PrintLabelDialog> {
                 const Spacer(),
                 Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0F172A),
+                    color: context.cardSubtle,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF334155)),
+                    border: Border.all(color: context.border),
                   ),
                   child: Row(
                     children: [
                       IconButton(
-                        icon: const Icon(
-                          Icons.remove,
+                        icon: Icon(
+                          LucideIcons.minus,
                           size: 16,
-                          color: Colors.white70,
+                          color: context.textPrimary,
                         ),
                         onPressed: _copies > 1
                             ? () => setState(() => _copies--)
@@ -380,17 +420,17 @@ class _PrintLabelDialogState extends State<PrintLabelDialog> {
                       ),
                       Text(
                         '$_copies',
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: context.textPrimary,
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(
-                          Icons.add,
+                        icon: Icon(
+                          LucideIcons.plus,
                           size: 16,
-                          color: Colors.white70,
+                          color: context.textPrimary,
                         ),
                         onPressed: () => setState(() => _copies++),
                       ),
@@ -403,9 +443,9 @@ class _PrintLabelDialogState extends State<PrintLabelDialog> {
 
             CheckboxListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text(
+              title: Text(
                 'Lembrar impressora para as próximas operações',
-                style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11),
+                style: TextStyle(color: context.textSecondary, fontSize: 11),
               ),
               value: _saveAsDefault,
               activeColor: const Color(0xFF2563EB),
@@ -414,6 +454,7 @@ class _PrintLabelDialogState extends State<PrintLabelDialog> {
             ),
             const SizedBox(height: 16),
 
+            // Botões de Ação
             Row(
               children: [
                 Expanded(
@@ -423,15 +464,15 @@ class _PrintLabelDialogState extends State<PrintLabelDialog> {
                         : () => Navigator.of(context).pop(false),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      side: const BorderSide(color: Color(0xFF475569)),
+                      side: BorderSide(color: context.border),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    child: const Text(
+                    child: Text(
                       'CANCELAR',
                       style: TextStyle(
-                        color: Color(0xFF94A3B8),
+                        color: context.textSecondary,
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
                       ),
@@ -445,6 +486,8 @@ class _PrintLabelDialogState extends State<PrintLabelDialog> {
                     onPressed: provider.isPrinting ? null : _submit,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2563EB),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
@@ -462,7 +505,6 @@ class _PrintLabelDialogState extends State<PrintLabelDialog> {
                         : const Text(
                             'IMPRIMIR',
                             style: TextStyle(
-                              color: Colors.white,
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
                             ),

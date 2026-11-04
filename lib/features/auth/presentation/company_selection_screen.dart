@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/theme/app_theme.dart';
 import 'auth_provider.dart';
 
 class CompanySelectionScreen extends StatelessWidget {
@@ -13,21 +14,18 @@ class CompanySelectionScreen extends StatelessWidget {
     final companies = auth.user?.companies ?? [];
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text(
+        title: Text(
           'Ambiente de Trabalho',
           style: TextStyle(
-            color: Colors.white,
+            color: context.textPrimary,
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(LucideIcons.log_out, color: Color(0xFF94A3B8)),
+            icon: Icon(LucideIcons.log_out, color: context.textSecondary),
             onPressed: () => context.read<AuthProvider>().logout(),
           ),
         ],
@@ -38,18 +36,18 @@ class CompanySelectionScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Selecione a Unidade / Armazém',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: context.textPrimary,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 6),
-              const Text(
+              Text(
                 'Suas operações serão registradas sob a empresa selecionada.',
-                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                style: TextStyle(color: context.textSecondary, fontSize: 13),
               ),
               const SizedBox(height: 24),
               Expanded(
@@ -65,8 +63,8 @@ class CompanySelectionScreen extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1E293B),
-                          border: Border.all(color: const Color(0xFF334155)),
+                          color: context.card,
+                          border: Border.all(color: context.border),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
@@ -80,7 +78,7 @@ class CompanySelectionScreen extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: const Icon(
-                                LucideIcons.warehouse,
+                                LucideIcons.building_complex,
                                 color: Color(0xFF3B82F6),
                               ),
                             ),
@@ -91,8 +89,8 @@ class CompanySelectionScreen extends StatelessWidget {
                                 children: [
                                   Text(
                                     company.corporateName,
-                                    style: const TextStyle(
-                                      color: Colors.white,
+                                    style: TextStyle(
+                                      color: context.textPrimary,
                                       fontSize: 14,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -100,8 +98,8 @@ class CompanySelectionScreen extends StatelessWidget {
                                   const SizedBox(height: 2),
                                   Text(
                                     'CNPJ: ${company.cnpj}',
-                                    style: const TextStyle(
-                                      color: Color(0xFF94A3B8),
+                                    style: TextStyle(
+                                      color: context.textSecondary,
                                       fontSize: 12,
                                       fontFamily: 'monospace',
                                     ),
@@ -109,9 +107,9 @@ class CompanySelectionScreen extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            const Icon(
+                            Icon(
                               LucideIcons.chevron_right,
-                              color: Color(0xFF64748B),
+                              color: context.textMuted,
                             ),
                           ],
                         ),

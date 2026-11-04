@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/theme/app_theme.dart';
 import '../../data/hu_models.dart';
 import '../hu_provider.dart';
 
@@ -51,7 +53,7 @@ class _SplitHuDialogState extends State<SplitHuDialog> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     if (_splitQty <= 0) {
-      setState(() => _localError = 'A quantidade deve ser maior que zero.');
+      setState(() => _localError = 'A quantidade deve ser superior a zero.');
       HapticFeedback.heavyImpact();
       return;
     }
@@ -84,10 +86,11 @@ class _SplitHuDialogState extends State<SplitHuDialog> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<HuProvider>();
+    final isDark = context.isDark;
+
     final maxAvailable = widget.hu.currentQuantity;
     final remainingAfterSplit = maxAvailable - _splitQty;
 
-    // Se o tipo da HU mãe existir na lista do produto, pré-seleciona
     final productPacks = provider.productPackagings;
     if (_selectedPackagingTypeId == null && productPacks.isNotEmpty) {
       final match = productPacks.firstWhere(
@@ -98,7 +101,7 @@ class _SplitHuDialogState extends State<SplitHuDialog> {
     }
 
     return Dialog(
-      backgroundColor: const Color(0xFF1E293B), // Slate 800
+      backgroundColor: context.card,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       insetPadding: const EdgeInsets.all(16),
       child: SingleChildScrollView(
@@ -115,32 +118,33 @@ class _SplitHuDialogState extends State<SplitHuDialog> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF8B5CF6).withValues(alpha: 0.15),
+                      color: const Color(0xFF8B5CF6)
+                          .withValues(alpha: isDark ? 0.2 : 0.12),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(
-                      Icons.call_split_rounded,
-                      color: Color(0xFFA78BFA),
+                      LucideIcons.split,
+                      color: Color(0xFF8B5CF6),
                       size: 24,
                     ),
                   ),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Split de HU (Transbordo)',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: context.textPrimary,
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         Text(
-                          'Desmembrar saldo em uma nova HU filha',
+                          'Desmembrar saldo numa nova HU filha',
                           style: TextStyle(
-                            color: Color(0xFF94A3B8),
+                            color: context.textSecondary,
                             fontSize: 11,
                           ),
                         ),
@@ -155,26 +159,26 @@ class _SplitHuDialogState extends State<SplitHuDialog> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0F172A),
+                  color: context.cardSubtle,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF334155)),
+                  border: Border.all(color: context.border),
                 ),
                 child: Column(
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'HU Origem (Mãe):',
                           style: TextStyle(
-                            color: Color(0xFF94A3B8),
+                            color: context.textSecondary,
                             fontSize: 11,
                           ),
                         ),
                         Text(
                           widget.hu.lpn,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: context.textPrimary,
                             fontWeight: FontWeight.bold,
                             fontFamily: 'monospace',
                             fontSize: 13,
@@ -186,10 +190,10 @@ class _SplitHuDialogState extends State<SplitHuDialog> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'Saldo Atual:',
                           style: TextStyle(
-                            color: Color(0xFF94A3B8),
+                            color: context.textSecondary,
                             fontSize: 11,
                           ),
                         ),
@@ -207,17 +211,17 @@ class _SplitHuDialogState extends State<SplitHuDialog> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'Posição:',
                           style: TextStyle(
-                            color: Color(0xFF94A3B8),
+                            color: context.textSecondary,
                             fontSize: 11,
                           ),
                         ),
                         Text(
                           widget.hu.currentLocationPath,
-                          style: const TextStyle(
-                            color: Colors.white70,
+                          style: TextStyle(
+                            color: context.textSecondary,
                             fontFamily: 'monospace',
                             fontSize: 12,
                           ),
@@ -229,17 +233,17 @@ class _SplitHuDialogState extends State<SplitHuDialog> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
+                          Text(
                             'Lote a herdar:',
                             style: TextStyle(
-                              color: Color(0xFF94A3B8),
+                              color: context.textSecondary,
                               fontSize: 11,
                             ),
                           ),
                           Text(
                             widget.hu.batch!,
-                            style: const TextStyle(
-                              color: Colors.white70,
+                            style: TextStyle(
+                              color: context.textSecondary,
                               fontFamily: 'monospace',
                               fontSize: 12,
                             ),
@@ -257,14 +261,22 @@ class _SplitHuDialogState extends State<SplitHuDialog> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF450A0A),
+                    color: isDark
+                        ? const Color(0xFF450A0A)
+                        : const Color(0xFFFFF1F2),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF991B1B)),
+                    border: Border.all(
+                      color: isDark
+                          ? const Color(0xFF991B1B)
+                          : const Color(0xFFFECDD3),
+                    ),
                   ),
                   child: Text(
                     _localError ?? provider.errorMessage ?? '',
-                    style: const TextStyle(
-                      color: Color(0xFFFCA5A5),
+                    style: TextStyle(
+                      color: isDark
+                          ? const Color(0xFFFCA5A5)
+                          : const Color(0xFFBE123C),
                       fontSize: 12,
                     ),
                   ),
@@ -279,8 +291,8 @@ class _SplitHuDialogState extends State<SplitHuDialog> {
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: context.textPrimary,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   fontFamily: 'monospace',
@@ -288,20 +300,24 @@ class _SplitHuDialogState extends State<SplitHuDialog> {
                 onChanged: _onQtyChanged,
                 decoration: InputDecoration(
                   labelText: 'Quantidade para a Nova HU',
-                  labelStyle: const TextStyle(
-                    color: Color(0xFF94A3B8),
+                  labelStyle: TextStyle(
+                    color: context.textSecondary,
                     fontSize: 13,
                   ),
                   suffixText: widget.hu.productBaseUnit,
-                  suffixStyle: const TextStyle(
-                    color: Color(0xFF94A3B8),
+                  suffixStyle: TextStyle(
+                    color: context.textSecondary,
                     fontWeight: FontWeight.bold,
                   ),
                   filled: true,
-                  fillColor: const Color(0xFF0F172A),
+                  fillColor: context.cardSubtle,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide.none,
+                    borderSide: BorderSide(color: context.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: context.border),
                   ),
                 ),
                 validator: (v) {
@@ -311,7 +327,7 @@ class _SplitHuDialogState extends State<SplitHuDialog> {
                   final val = double.tryParse(v.replaceAll(',', '.'));
                   if (val == null || val <= 0) return 'Quantidade inválida';
                   if (val >= maxAvailable) {
-                    return 'Deve ser menor que ${maxAvailable.toStringAsFixed(0)}';
+                    return 'Deve ser inferior a ${maxAvailable.toStringAsFixed(0)}';
                   }
                   return null;
                 },
@@ -326,26 +342,31 @@ class _SplitHuDialogState extends State<SplitHuDialog> {
                     )
                     ? _selectedPackagingTypeId
                     : null,
-                dropdownColor: const Color(0xFF1E293B),
-                style: const TextStyle(color: Colors.white, fontSize: 13),
+                isExpanded: true,
+                dropdownColor: context.card,
+                style: TextStyle(color: context.textPrimary, fontSize: 13),
                 decoration: InputDecoration(
                   labelText: 'Embalagem do Produto',
-                  labelStyle: const TextStyle(
-                    color: Color(0xFF94A3B8),
+                  labelStyle: TextStyle(
+                    color: context.textSecondary,
                     fontSize: 12,
                   ),
                   helperText: productPacks.isEmpty
-                      ? 'Carregando embalagens do produto...'
+                      ? 'A carregar embalagens do produto...'
                       : null,
-                  helperStyle: const TextStyle(
-                    color: Color(0xFF64748B),
+                  helperStyle: TextStyle(
+                    color: context.textMuted,
                     fontSize: 10,
                   ),
                   filled: true,
-                  fillColor: const Color(0xFF0F172A),
+                  fillColor: context.cardSubtle,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide.none,
+                    borderSide: BorderSide(color: context.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: context.border),
                   ),
                 ),
                 items: productPacks.map((p) {
@@ -353,6 +374,7 @@ class _SplitHuDialogState extends State<SplitHuDialog> {
                     value: p.packagingTypeId,
                     child: Text(
                       '${p.code} - ${p.description} (${p.conversionFactor.toStringAsFixed(0)} ${widget.hu.productBaseUnit})',
+                      overflow: TextOverflow.ellipsis,
                     ),
                   );
                 }).toList(),
@@ -369,22 +391,34 @@ class _SplitHuDialogState extends State<SplitHuDialog> {
                 ),
                 decoration: BoxDecoration(
                   color: remainingAfterSplit > 0
-                      ? const Color(0xFF0F172A)
-                      : const Color(0xFF450A0A),
+                      ? context.cardSubtle
+                      : (isDark
+                            ? const Color(0xFF450A0A)
+                            : const Color(0xFFFFF1F2)),
                   borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: remainingAfterSplit > 0
+                        ? context.border
+                        : (isDark
+                              ? const Color(0xFF991B1B)
+                              : const Color(0xFFFECDD3)),
+                  ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'Saldo Restante na Mãe:',
-                      style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                      style: TextStyle(
+                        color: context.textSecondary,
+                        fontSize: 11,
+                      ),
                     ),
                     Text(
                       '${remainingAfterSplit >= 0 ? remainingAfterSplit.toStringAsFixed(0) : "0"} ${widget.hu.productBaseUnit}',
                       style: TextStyle(
                         color: remainingAfterSplit > 0
-                            ? const Color(0xFF38BDF8)
+                            ? const Color(0xFF2563EB)
                             : const Color(0xFFEF4444),
                         fontWeight: FontWeight.bold,
                         fontFamily: 'monospace',
@@ -406,15 +440,15 @@ class _SplitHuDialogState extends State<SplitHuDialog> {
                           : () => Navigator.of(context).pop(),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: const BorderSide(color: Color(0xFF475569)),
+                        side: BorderSide(color: context.border),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      child: const Text(
+                      child: Text(
                         'CANCELAR',
                         style: TextStyle(
-                          color: Color(0xFF94A3B8),
+                          color: context.textSecondary,
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
                         ),
@@ -428,6 +462,7 @@ class _SplitHuDialogState extends State<SplitHuDialog> {
                       onPressed: provider.isSplitting ? null : _submit,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF8B5CF6),
+                        foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
@@ -445,7 +480,6 @@ class _SplitHuDialogState extends State<SplitHuDialog> {
                           : const Text(
                               'CONFIRMAR SPLIT',
                               style: TextStyle(
-                                color: Colors.white,
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
                               ),

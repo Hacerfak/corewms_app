@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_theme.dart';
+
 class MenuCard extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -27,7 +29,7 @@ class MenuCard extends StatelessWidget {
     return Opacity(
       opacity: opacity,
       child: Material(
-        color: const Color(0xFF1E293B), // Slate 800
+        color: context.card, // <-- Reativo ao tema
         borderRadius: BorderRadius.circular(14),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -37,7 +39,7 @@ class MenuCard extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFF334155)),
+              border: Border.all(color: context.border), // <-- Reativo ao tema
               borderRadius: BorderRadius.circular(14),
             ),
             child: Column(
@@ -89,8 +91,8 @@ class MenuCard extends StatelessWidget {
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: context.textPrimary, // <-- Reativo ao tema
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),
@@ -100,8 +102,8 @@ class MenuCard extends StatelessWidget {
                       subtitle,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF94A3B8),
+                      style: TextStyle(
+                        color: context.textSecondary, // <-- Reativo ao tema
                         fontSize: 10.5,
                         height: 1.2,
                       ),

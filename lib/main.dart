@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'core/api/api_client.dart';
 import 'core/scanner/scanner_service.dart';
 import 'core/storage/storage_service.dart';
+import 'core/theme/app_theme.dart';
+import 'core/theme/theme_provider.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/presentation/auth_provider.dart';
 import 'features/auth/presentation/company_selection_screen.dart';
@@ -24,8 +26,6 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final storage = StorageService();
-
-  // Lê a URL configurada pelo cliente (ou fallback para ampla)
   final initialBaseUrl = await storage.getBaseUrl();
   final api = ApiClient(storage, initialBaseUrl: initialBaseUrl);
 
@@ -49,6 +49,9 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(
+          create: (_) => ThemeProvider(),
+        ), // <-- Provedor de Tema
         Provider<StorageService>.value(value: storage),
         Provider<ApiClient>.value(value: api),
         Provider<ScannerService>.value(value: scannerService),
@@ -74,18 +77,15 @@ class CoreWmsApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+
     return MaterialApp(
       navigatorKey: navigatorKey,
       title: 'CoreWMS',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0F172A),
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF2563EB),
-          surface: Color(0xFF1E293B),
-        ),
-      ),
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: themeProvider.themeMode, // <-- Responde dinamicamente ao tema
       home: Consumer<AuthProvider>(
         builder: (context, auth, _) {
           switch (auth.status) {

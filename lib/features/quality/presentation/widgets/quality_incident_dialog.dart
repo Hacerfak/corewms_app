@@ -2,13 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/scanner/qr_scanner_dialog.dart';
 import '../../../../core/scanner/scanner_service.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../hu/data/hu_models.dart';
 import '../../../hu/presentation/hu_provider.dart';
 import '../../data/quality_models.dart';
@@ -211,9 +212,10 @@ class _QualityIncidentDialogState extends State<QualityIncidentDialog> {
   Widget build(BuildContext context) {
     final qualityProvider = context.watch<QualityProvider>();
     final reasons = qualityProvider.reasons;
+    final isDark = context.isDark;
 
     return Dialog(
-      backgroundColor: const Color(0xFF1E293B), // Slate 800
+      backgroundColor: context.card,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       insetPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
       child: SingleChildScrollView(
@@ -230,12 +232,13 @@ class _QualityIncidentDialogState extends State<QualityIncidentDialog> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                      color: const Color(0xFFF59E0B)
+                          .withValues(alpha: isDark ? 0.2 : 0.12),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(
                       LucideIcons.shield_alert,
-                      color: Color(0xFFFBBF24),
+                      color: Color(0xFFF59E0B),
                       size: 24,
                     ),
                   ),
@@ -246,16 +249,16 @@ class _QualityIncidentDialogState extends State<QualityIncidentDialog> {
                       children: [
                         Text(
                           widget.title,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: context.textPrimary,
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const Text(
+                        Text(
                           'Avaria física, retenção e bloqueios',
                           style: TextStyle(
-                            color: Color(0xFF94A3B8),
+                            color: context.textSecondary,
                             fontSize: 11,
                           ),
                         ),
@@ -271,31 +274,54 @@ class _QualityIncidentDialogState extends State<QualityIncidentDialog> {
                 const SizedBox(height: 14),
               ],
 
+              // Alerta de Erro
               if (_localError != null ||
                   qualityProvider.errorMessage != null) ...[
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF450A0A),
+                    color: isDark
+                        ? const Color(0xFF450A0A)
+                        : const Color(0xFFFFF1F2),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF991B1B)),
-                  ),
-                  child: Text(
-                    _localError ?? qualityProvider.errorMessage ?? '',
-                    style: const TextStyle(
-                      color: Color(0xFFFCA5A5),
-                      fontSize: 12,
+                    border: Border.all(
+                      color: isDark
+                          ? const Color(0xFF991B1B)
+                          : const Color(0xFFFECDD3),
                     ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        LucideIcons.circle_alert,
+                        size: 16,
+                        color: isDark
+                            ? const Color(0xFFFCA5A5)
+                            : const Color(0xFFE11D48),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _localError ?? qualityProvider.errorMessage ?? '',
+                          style: TextStyle(
+                            color: isDark
+                                ? const Color(0xFFFCA5A5)
+                                : const Color(0xFFBE123C),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 12),
               ],
 
               // 1. Tipo de Bloqueio
-              const Text(
+              Text(
                 'Tipo de Ocorrência',
                 style: TextStyle(
-                  color: Color(0xFF94A3B8),
+                  color: context.textSecondary,
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                 ),
@@ -305,16 +331,18 @@ class _QualityIncidentDialogState extends State<QualityIncidentDialog> {
                 children: [
                   Expanded(
                     child: _buildStatusRadio(
+                      context: context,
                       target: QualityStatusTarget.damaged,
-                      icon: Icons.broken_image_outlined,
+                      icon: LucideIcons.bomb,
                       activeColor: const Color(0xFFEF4444),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: _buildStatusRadio(
+                      context: context,
                       target: QualityStatusTarget.quarantine,
-                      icon: Icons.lock_clock_outlined,
+                      icon: LucideIcons.lock,
                       activeColor: const Color(0xFFF59E0B),
                     ),
                   ),
@@ -322,23 +350,27 @@ class _QualityIncidentDialogState extends State<QualityIncidentDialog> {
               ),
               const SizedBox(height: 14),
 
-              // 2. Motivo da Ocorrência (Com isExpanded para prevenir overflow de texto)
+              // 2. Motivo da Ocorrência
               DropdownButtonFormField<String>(
                 initialValue: _selectedReasonId,
                 isExpanded: true,
-                dropdownColor: const Color(0xFF1E293B),
-                style: const TextStyle(color: Colors.white, fontSize: 13),
+                dropdownColor: context.card,
+                style: TextStyle(color: context.textPrimary, fontSize: 13),
                 decoration: InputDecoration(
                   labelText: 'Motivo da Ocorrência *',
-                  labelStyle: const TextStyle(
-                    color: Color(0xFF94A3B8),
+                  labelStyle: TextStyle(
+                    color: context.textSecondary,
                     fontSize: 12,
                   ),
                   filled: true,
-                  fillColor: const Color(0xFF0F172A),
+                  fillColor: context.cardSubtle,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide.none,
+                    borderSide: BorderSide(color: context.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: context.border),
                   ),
                 ),
                 items: reasons.map((r) {
@@ -366,23 +398,24 @@ class _QualityIncidentDialogState extends State<QualityIncidentDialog> {
                 controller: _notesController,
                 maxLines: 3,
                 maxLength: 500,
-                style: const TextStyle(color: Colors.white, fontSize: 13),
+                style: TextStyle(color: context.textPrimary, fontSize: 13),
                 decoration: InputDecoration(
                   labelText: 'Descrição detalhada do problema *',
-                  labelStyle: const TextStyle(
-                    color: Color(0xFF94A3B8),
+                  labelStyle: TextStyle(
+                    color: context.textSecondary,
                     fontSize: 12,
                   ),
                   hintText: 'Ex: Caixa rompida, produto avariado no palete...',
-                  hintStyle: const TextStyle(
-                    color: Color(0xFF64748B),
-                    fontSize: 12,
-                  ),
+                  hintStyle: TextStyle(color: context.textMuted, fontSize: 12),
                   filled: true,
-                  fillColor: const Color(0xFF0F172A),
+                  fillColor: context.cardSubtle,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide.none,
+                    borderSide: BorderSide(color: context.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: context.border),
                   ),
                 ),
                 validator: (v) => (v == null || v.trim().isEmpty)
@@ -396,19 +429,20 @@ class _QualityIncidentDialogState extends State<QualityIncidentDialog> {
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   activeThumbColor: const Color(0xFFF59E0B),
-                  activeTrackColor: const Color(0xFFF59E0B)
-                      .withValues(alpha: 0.3),
-                  title: const Text(
+                  title: Text(
                     'Transferir para Posição de Qualidade',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: context.textPrimary,
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  subtitle: const Text(
+                  subtitle: Text(
                     'Move fisicamente para a área de quarentena/avarias',
-                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                    style: TextStyle(
+                      color: context.textSecondary,
+                      fontSize: 11,
+                    ),
                   ),
                   value: _shouldMoveToLocation,
                   onChanged: (val) => setState(() {
@@ -420,8 +454,8 @@ class _QualityIncidentDialogState extends State<QualityIncidentDialog> {
                   const SizedBox(height: 6),
                   TextFormField(
                     controller: _locationController,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: context.textPrimary,
                       fontFamily: 'monospace',
                       fontSize: 13,
                     ),
@@ -429,21 +463,24 @@ class _QualityIncidentDialogState extends State<QualityIncidentDialog> {
                     onFieldSubmitted: _resolveLocation,
                     decoration: InputDecoration(
                       labelText: 'Bipe ou digite o Endereço de Qualidade',
-                      labelStyle: const TextStyle(
-                        color: Color(0xFF94A3B8),
+                      labelStyle: TextStyle(
+                        color: context.textSecondary,
                         fontSize: 12,
                       ),
                       prefixIcon: const Icon(
-                        LucideIcons.scan_barcode,
+                        LucideIcons.scan,
                         color: Color(0xFFF59E0B),
+                        size: 18,
                       ),
                       suffixIcon: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                            icon: const Icon(
-                              Icons.photo_camera_rounded,
-                              color: Color(0xFF60A5FA),
+                            icon: Icon(
+                              LucideIcons.camera,
+                              color: isDark
+                                  ? const Color(0xFF60A5FA)
+                                  : const Color(0xFF2563EB),
                               size: 18,
                             ),
                             onPressed: _openCameraScannerLocation,
@@ -463,8 +500,9 @@ class _QualityIncidentDialogState extends State<QualityIncidentDialog> {
                           else
                             IconButton(
                               icon: const Icon(
-                                Icons.arrow_forward_rounded,
+                                LucideIcons.arrow_right,
                                 color: Color(0xFFF59E0B),
+                                size: 18,
                               ),
                               onPressed: () =>
                                   _resolveLocation(_locationController.text),
@@ -472,10 +510,14 @@ class _QualityIncidentDialogState extends State<QualityIncidentDialog> {
                         ],
                       ),
                       filled: true,
-                      fillColor: const Color(0xFF0F172A),
+                      fillColor: context.cardSubtle,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide.none,
+                        borderSide: BorderSide(color: context.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: context.border),
                       ),
                     ),
                   ),
@@ -487,22 +529,29 @@ class _QualityIncidentDialogState extends State<QualityIncidentDialog> {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF064E3B).withValues(alpha: 0.3),
+                        color: const Color(0xFF064E3B)
+                            .withValues(alpha: isDark ? 0.3 : 0.12),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFF059669)),
+                        border: Border.all(
+                          color: isDark
+                              ? const Color(0xFF059669)
+                              : const Color(0xFFA7F3D0),
+                        ),
                       ),
                       child: Row(
                         children: [
                           const Icon(
-                            Icons.check_circle_rounded,
-                            color: Color(0xFF34D399),
+                            LucideIcons.circle_check,
+                            color: Color(0xFF10B981),
                             size: 14,
                           ),
                           const SizedBox(width: 6),
                           Text(
                             'Destino: ${_resolvedLocation!.fullPath}',
-                            style: const TextStyle(
-                              color: Color(0xFF34D399),
+                            style: TextStyle(
+                              color: isDark
+                                  ? const Color(0xFF34D399)
+                                  : const Color(0xFF065F46),
                               fontWeight: FontWeight.bold,
                               fontFamily: 'monospace',
                               fontSize: 12,
@@ -522,8 +571,8 @@ class _QualityIncidentDialogState extends State<QualityIncidentDialog> {
                 children: [
                   Text(
                     'Fotos / Evidências (${_attachments.length})',
-                    style: const TextStyle(
-                      color: Color(0xFF94A3B8),
+                    style: TextStyle(
+                      color: context.textSecondary,
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                     ),
@@ -532,17 +581,17 @@ class _QualityIncidentDialogState extends State<QualityIncidentDialog> {
                     children: [
                       IconButton(
                         icon: const Icon(
-                          Icons.camera_alt_rounded,
-                          color: Color(0xFF38BDF8),
+                          LucideIcons.camera,
+                          color: Color(0xFF2563EB),
                           size: 20,
                         ),
-                        tooltip: 'Tirar Foto com a Câmera',
+                        tooltip: 'Tirar Foto com a Câmara',
                         onPressed: () => _takePhoto(ImageSource.camera),
                       ),
                       IconButton(
                         icon: const Icon(
-                          Icons.photo_library_rounded,
-                          color: Color(0xFF818CF8),
+                          LucideIcons.image,
+                          color: Color(0xFF6366F1),
                           size: 20,
                         ),
                         tooltip: 'Selecionar da Galeria',
@@ -586,7 +635,7 @@ class _QualityIncidentDialogState extends State<QualityIncidentDialog> {
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
-                                  Icons.close,
+                                  LucideIcons.x,
                                   color: Colors.white,
                                   size: 14,
                                 ),
@@ -611,15 +660,15 @@ class _QualityIncidentDialogState extends State<QualityIncidentDialog> {
                           : () => Navigator.of(context).pop(),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: const BorderSide(color: Color(0xFF475569)),
+                        side: BorderSide(color: context.border),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      child: const Text(
+                      child: Text(
                         'CANCELAR',
                         style: TextStyle(
-                          color: Color(0xFF94A3B8),
+                          color: context.textSecondary,
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
                         ),
@@ -633,6 +682,8 @@ class _QualityIncidentDialogState extends State<QualityIncidentDialog> {
                       onPressed: qualityProvider.isSubmitting ? null : _submit,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFF59E0B),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
@@ -650,7 +701,6 @@ class _QualityIncidentDialogState extends State<QualityIncidentDialog> {
                           : const Text(
                               'CONFIRMAR OCORRÊNCIA',
                               style: TextStyle(
-                                color: Colors.white,
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -667,10 +717,12 @@ class _QualityIncidentDialogState extends State<QualityIncidentDialog> {
   }
 
   Widget _buildStatusRadio({
+    required BuildContext context,
     required QualityStatusTarget target,
     required IconData icon,
     required Color activeColor,
   }) {
+    final isDark = context.isDark;
     final isSelected = _selectedStatus == target;
 
     return InkWell(
@@ -680,18 +732,16 @@ class _QualityIncidentDialogState extends State<QualityIncidentDialog> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? activeColor.withValues(alpha: 0.15)
-              : const Color(0xFF0F172A),
-          border: Border.all(
-            color: isSelected ? activeColor : const Color(0xFF334155),
-          ),
+              ? activeColor.withValues(alpha: isDark ? 0.2 : 0.12)
+              : context.cardSubtle,
+          border: Border.all(color: isSelected ? activeColor : context.border),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
           children: [
             Icon(
               icon,
-              color: isSelected ? activeColor : const Color(0xFF64748B),
+              color: isSelected ? activeColor : context.textSecondary,
               size: 18,
             ),
             const SizedBox(width: 6),
@@ -699,7 +749,9 @@ class _QualityIncidentDialogState extends State<QualityIncidentDialog> {
               child: Text(
                 target.label,
                 style: TextStyle(
-                  color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+                  color: isSelected
+                      ? context.textPrimary
+                      : context.textSecondary,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   fontSize: 12,
                 ),

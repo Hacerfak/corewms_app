@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/scanner/qr_scanner_dialog.dart';
 import '../../../core/scanner/scanner_service.dart';
+import '../../../core/theme/app_theme.dart';
 import '../data/hu_models.dart';
 import 'hu_provider.dart';
 import 'widgets/move_hu_dialog.dart';
@@ -15,7 +16,6 @@ import 'widgets/split_success_dialog.dart';
 import 'widgets/merge_hu_dialog.dart';
 import 'widgets/merge_success_dialog.dart';
 
-// Módulos desacoplados:
 import '../../printing/presentation/printing_provider.dart';
 import '../../printing/presentation/widgets/print_label_dialog.dart';
 import '../../quality/data/quality_models.dart';
@@ -39,7 +39,6 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
   @override
   void initState() {
     super.initState();
-
     if (widget.initialLpn != null && widget.initialLpn!.isNotEmpty) {
       _lpnController.text = widget.initialLpn!;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -95,7 +94,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
           backgroundColor: Color(0xFF10B981),
           content: Row(
             children: [
-              Icon(Icons.check_circle, color: Colors.white, size: 20),
+              Icon(LucideIcons.circle_check, color: Colors.white, size: 20),
               SizedBox(width: 8),
               Text('HU movimentada com sucesso!'),
             ],
@@ -143,7 +142,6 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
     }
   }
 
-  /// Apontamento de Qualidade usando o módulo desacoplado
   Future<void> _openQualityHoldDialog(HandlingUnitModel hu) async {
     final result = await showDialog<QualityIncidentData>(
       context: context,
@@ -153,9 +151,9 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
         headerSummary: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: const Color(0xFF0F172A),
+            color: context.cardSubtle,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFF334155)),
+            border: Border.all(color: context.border),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -165,8 +163,8 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                 children: [
                   Text(
                     hu.lpn,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: context.textPrimary,
                       fontWeight: FontWeight.bold,
                       fontFamily: 'monospace',
                       fontSize: 14,
@@ -174,8 +172,8 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                   ),
                   Text(
                     '${hu.productSku} • Saldo: ${hu.currentQuantity.toStringAsFixed(0)} ${hu.productBaseUnit}',
-                    style: const TextStyle(
-                      color: Color(0xFF94A3B8),
+                    style: TextStyle(
+                      color: context.textSecondary,
                       fontSize: 11,
                     ),
                   ),
@@ -184,7 +182,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
               Text(
                 hu.currentLocationPath,
                 style: const TextStyle(
-                  color: Color(0xFF38BDF8),
+                  color: Color(0xFF2563EB),
                   fontWeight: FontWeight.bold,
                   fontFamily: 'monospace',
                   fontSize: 12,
@@ -219,7 +217,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
           backgroundColor: Color(0xFFF59E0B),
           content: Row(
             children: [
-              Icon(Icons.check_circle, color: Colors.white, size: 20),
+              Icon(LucideIcons.circle_check, color: Colors.white, size: 20),
               SizedBox(width: 8),
               Text('Ocorrência de qualidade registrada com sucesso!'),
             ],
@@ -230,7 +228,6 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
     }
   }
 
-  /// Impressão usando o módulo desacoplado
   Future<void> _openReprintDialog(HandlingUnitModel hu) async {
     final printed = await showDialog<bool>(
       context: context,
@@ -240,23 +237,26 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
         summaryWidget: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFF0F172A),
+            color: context.cardSubtle,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFF334155)),
+            border: Border.all(color: context.border),
           ),
           child: Column(
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     'LPN:',
-                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                    style: TextStyle(
+                      color: context.textSecondary,
+                      fontSize: 11,
+                    ),
                   ),
                   Text(
                     hu.lpn,
                     style: const TextStyle(
-                      color: Color(0xFF38BDF8),
+                      color: Color(0xFF2563EB),
                       fontWeight: FontWeight.bold,
                       fontFamily: 'monospace',
                       fontSize: 14,
@@ -268,14 +268,17 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     'Produto / Qtd:',
-                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                    style: TextStyle(
+                      color: context.textSecondary,
+                      fontSize: 11,
+                    ),
                   ),
                   Text(
                     '${hu.productSku} • ${hu.currentQuantity.toStringAsFixed(0)} ${hu.productBaseUnit}',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: context.textPrimary,
                       fontWeight: FontWeight.w600,
                       fontSize: 12,
                     ),
@@ -309,7 +312,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
           backgroundColor: Color(0xFF10B981),
           content: Row(
             children: [
-              Icon(Icons.check_circle, color: Colors.white, size: 20),
+              Icon(LucideIcons.circle_check, color: Colors.white, size: 20),
               SizedBox(width: 8),
               Text('Etiqueta enviada para a impressora!'),
             ],
@@ -352,7 +355,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
   Color _getStatusColor(String status) {
     switch (status.toUpperCase()) {
       case 'STORED':
-        return const Color(0xFF3B82F6);
+        return const Color(0xFF2563EB);
       case 'INDOCK':
       case 'RECEIVING':
         return const Color(0xFF10B981);
@@ -398,14 +401,11 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
     final hu = huProvider.currentHu;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
-        elevation: 0,
-        title: const Text(
+        title: Text(
           'Consulta & Manejo de HU',
           style: TextStyle(
-            color: Colors.white,
+            color: context.textPrimary,
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
@@ -413,7 +413,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
         actions: [
           if (hu != null)
             IconButton(
-              icon: const Icon(Icons.refresh, color: Color(0xFF94A3B8)),
+              icon: Icon(LucideIcons.refresh_cw, color: context.textSecondary),
               onPressed: () => huProvider.searchHu(hu.lpn),
             ),
         ],
@@ -424,15 +424,18 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
             // BARRA DE PESQUISA
             Container(
               padding: const EdgeInsets.all(12),
-              color: const Color(0xFF1E293B),
+              decoration: BoxDecoration(
+                color: context.card,
+                border: Border(bottom: BorderSide(color: context.border)),
+              ),
               child: Row(
                 children: [
                   Expanded(
                     child: TextFormField(
                       controller: _lpnController,
                       focusNode: _lpnFocus,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: context.textPrimary,
                         fontFamily: 'monospace',
                         fontSize: 14,
                       ),
@@ -440,12 +443,8 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                       onFieldSubmitted: (_) => _search(),
                       decoration: InputDecoration(
                         hintText: 'Bipar ou digitar LPN da HU...',
-                        hintStyle: const TextStyle(
-                          color: Color(0xFF64748B),
-                          fontSize: 13,
-                        ),
                         prefixIcon: const Icon(
-                          LucideIcons.scan_barcode,
+                          LucideIcons.scan_line,
                           color: Color(0xFF3B82F6),
                           size: 20,
                         ),
@@ -454,7 +453,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                           children: [
                             IconButton(
                               icon: const Icon(
-                                Icons.photo_camera_rounded,
+                                LucideIcons.camera,
                                 color: Color(0xFF60A5FA),
                                 size: 20,
                               ),
@@ -463,9 +462,9 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                             ),
                             if (_lpnController.text.isNotEmpty)
                               IconButton(
-                                icon: const Icon(
+                                icon: Icon(
                                   LucideIcons.x,
-                                  color: Color(0xFF64748B),
+                                  color: context.textSecondary,
                                   size: 18,
                                 ),
                                 onPressed: () {
@@ -474,16 +473,6 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                 },
                               ),
                           ],
-                        ),
-                        filled: true,
-                        fillColor: const Color(0xFF0F172A),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide.none,
                         ),
                       ),
                     ),
@@ -539,7 +528,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             const Icon(
-                              Icons.error_outline_rounded,
+                              LucideIcons.circle_alert,
                               size: 56,
                               color: Color(0xFFEF4444),
                             ),
@@ -548,7 +537,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                               huProvider.errorMessage!,
                               textAlign: TextAlign.center,
                               style: const TextStyle(
-                                color: Color(0xFFFCA5A5),
+                                color: Color(0xFFEF4444),
                                 fontSize: 14,
                               ),
                             ),
@@ -561,25 +550,25 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(
-                            LucideIcons.scan_barcode,
+                          Icon(
+                            LucideIcons.scan_line,
                             size: 64,
-                            color: Color(0xFF334155),
+                            color: context.textMuted,
                           ),
                           const SizedBox(height: 12),
-                          const Text(
+                          Text(
                             'Nenhuma HU selecionada',
                             style: TextStyle(
-                              color: Colors.white70,
+                              color: context.textPrimary,
                               fontSize: 15,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const SizedBox(height: 4),
-                          const Text(
+                          Text(
                             'Pressione o gatilho, toque na câmera ou digite o LPN acima.',
                             style: TextStyle(
-                              color: Color(0xFF64748B),
+                              color: context.textSecondary,
                               fontSize: 12,
                             ),
                           ),
@@ -591,22 +580,23 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          // BLOQUEIO QUANDO CONSUMIDA
                           if (!hu.canPerformActions) ...[
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF450A0A),
+                                color: const Color(0xFFEF4444)
+                                    .withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                  color: const Color(0xFF991B1B),
+                                  color: const Color(0xFFEF4444)
+                                      .withValues(alpha: 0.3),
                                 ),
                               ),
                               child: Row(
                                 children: [
                                   const Icon(
-                                    Icons.block_rounded,
-                                    color: Color(0xFFF87171),
+                                    LucideIcons.ban,
+                                    color: Color(0xFFEF4444),
                                     size: 20,
                                   ),
                                   const SizedBox(width: 10),
@@ -618,7 +608,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                         Text(
                                           'HU ${hu.currentQuantity <= 0 ? "SEM SALDO" : "FINALIZADA"} (${_getStatusLabel(hu.status).toUpperCase()})',
                                           style: const TextStyle(
-                                            color: Color(0xFFFCA5A5),
+                                            color: Color(0xFFEF4444),
                                             fontWeight: FontWeight.bold,
                                             fontSize: 12,
                                           ),
@@ -626,7 +616,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                         const Text(
                                           'Esta unidade não está ativa no armazém. Movimentações bloqueadas.',
                                           style: TextStyle(
-                                            color: Color(0xFFFCA5A5),
+                                            color: Color(0xFFEF4444),
                                             fontSize: 11,
                                           ),
                                         ),
@@ -643,11 +633,9 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                           Container(
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1E293B),
+                              color: context.card,
                               borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: const Color(0xFF334155),
-                              ),
+                              border: Border.all(color: context.border),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -659,15 +647,15 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                     Row(
                                       children: [
                                         const Icon(
-                                          Icons.inventory_2,
+                                          LucideIcons.box,
                                           color: Color(0xFF3B82F6),
                                           size: 20,
                                         ),
                                         const SizedBox(width: 8),
                                         Text(
                                           hu.lpn,
-                                          style: const TextStyle(
-                                            color: Colors.white,
+                                          style: TextStyle(
+                                            color: context.textPrimary,
                                             fontSize: 16,
                                             fontWeight: FontWeight.bold,
                                             fontFamily: 'monospace',
@@ -736,10 +724,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                     ),
                                   ],
                                 ),
-                                const Divider(
-                                  color: Color(0xFF334155),
-                                  height: 20,
-                                ),
+                                Divider(color: context.border, height: 20),
                                 Row(
                                   children: [
                                     Container(
@@ -750,7 +735,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: const Icon(
-                                        Icons.location_on,
+                                        LucideIcons.map_pin,
                                         color: Color(0xFF06B6D4),
                                         size: 20,
                                       ),
@@ -761,17 +746,17 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          const Text(
+                                          Text(
                                             'Endereço / Posição Física',
                                             style: TextStyle(
-                                              color: Color(0xFF94A3B8),
+                                              color: context.textSecondary,
                                               fontSize: 11,
                                             ),
                                           ),
                                           Text(
                                             hu.currentLocationPath,
-                                            style: const TextStyle(
-                                              color: Colors.white,
+                                            style: TextStyle(
+                                              color: context.textPrimary,
                                               fontSize: 15,
                                               fontWeight: FontWeight.bold,
                                               fontFamily: 'monospace',
@@ -791,11 +776,11 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                           Container(
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1E293B),
+                              color: context.card,
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
                                 color: const Color(0xFF2563EB)
-                                    .withValues(alpha: 0.4),
+                                    .withValues(alpha: 0.3),
                               ),
                             ),
                             child: Column(
@@ -809,7 +794,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                       children: [
                                         const Icon(
                                           LucideIcons.file_text,
-                                          color: Color(0xFF60A5FA),
+                                          color: Color(0xFF2563EB),
                                           size: 18,
                                         ),
                                         const SizedBox(width: 6),
@@ -818,7 +803,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                               ? 'NF-e: ${hu.invoiceNumber}${hu.invoiceSerie != null ? ' - Série ${hu.invoiceSerie}' : ''}'
                                               : 'Entrada: Sem NF-e Vinculada',
                                           style: const TextStyle(
-                                            color: Color(0xFF93C5FD),
+                                            color: Color(0xFF2563EB),
                                             fontSize: 13,
                                             fontWeight: FontWeight.bold,
                                           ),
@@ -828,8 +813,8 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                     if (hu.receiptDate != null)
                                       Text(
                                         'Entrada: ${_formatDate(hu.receiptDate)}',
-                                        style: const TextStyle(
-                                          color: Color(0xFF94A3B8),
+                                        style: TextStyle(
+                                          color: context.textSecondary,
                                           fontSize: 10,
                                         ),
                                       ),
@@ -840,8 +825,8 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                     hu.issuerName!.isNotEmpty) ...[
                                   Text(
                                     hu.issuerName!,
-                                    style: const TextStyle(
-                                      color: Colors.white,
+                                    style: TextStyle(
+                                      color: context.textPrimary,
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -850,8 +835,8 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                       hu.issuerCnpj!.isNotEmpty)
                                     Text(
                                       'CNPJ Fornecedor: ${hu.issuerCnpj}',
-                                      style: const TextStyle(
-                                        color: Color(0xFF94A3B8),
+                                      style: TextStyle(
+                                        color: context.textSecondary,
                                         fontSize: 11,
                                         fontFamily: 'monospace',
                                       ),
@@ -879,18 +864,18 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                         vertical: 6,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF0F172A),
+                                        color: context.cardSubtle,
                                         borderRadius: BorderRadius.circular(6),
                                         border: Border.all(
-                                          color: const Color(0xFF334155),
+                                          color: context.border,
                                         ),
                                       ),
                                       child: Row(
                                         children: [
-                                          const Icon(
-                                            Icons.vpn_key_outlined,
+                                          Icon(
+                                            LucideIcons.key,
                                             size: 13,
-                                            color: Color(0xFF64748B),
+                                            color: context.textMuted,
                                           ),
                                           const SizedBox(width: 6),
                                           Expanded(
@@ -898,17 +883,17 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                               hu.accessKey!,
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(
-                                                color: Color(0xFF94A3B8),
+                                              style: TextStyle(
+                                                color: context.textSecondary,
                                                 fontSize: 10,
                                                 fontFamily: 'monospace',
                                               ),
                                             ),
                                           ),
                                           const Icon(
-                                            Icons.copy_rounded,
+                                            LucideIcons.copy,
                                             size: 12,
-                                            color: Color(0xFF60A5FA),
+                                            color: Color(0xFF2563EB),
                                           ),
                                         ],
                                       ),
@@ -924,19 +909,17 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                           Container(
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1E293B),
+                              color: context.card,
                               borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: const Color(0xFF334155),
-                              ),
+                              border: Border.all(color: context.border),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   '${hu.productSku} - ${hu.productDescription}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: context.textPrimary,
                                     fontSize: 14,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -944,8 +927,8 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                 const SizedBox(height: 4),
                                 Text(
                                   'Depositante: ${hu.customerName}',
-                                  style: const TextStyle(
-                                    color: Color(0xFF94A3B8),
+                                  style: TextStyle(
+                                    color: context.textSecondary,
                                     fontSize: 12,
                                   ),
                                 ),
@@ -957,18 +940,16 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                     vertical: 6,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF0F172A),
+                                    color: context.cardSubtle,
                                     borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: const Color(0xFF334155),
-                                    ),
+                                    border: Border.all(color: context.border),
                                   ),
                                   child: Row(
                                     children: [
                                       const Icon(
-                                        Icons.layers_outlined,
+                                        LucideIcons.layers,
                                         size: 16,
-                                        color: Color(0xFF38BDF8),
+                                        color: Color(0xFF2563EB),
                                       ),
                                       const SizedBox(width: 8),
                                       Expanded(
@@ -978,8 +959,8 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                                       null
                                               ? 'Embalagem: ${hu.packagingTypeCode ?? ""} ${hu.packagingTypeDescription != null ? "(${hu.packagingTypeDescription})" : ""}'
                                               : 'Embalagem: Padrão (UN)',
-                                          style: const TextStyle(
-                                            color: Color(0xFFE2E8F0),
+                                          style: TextStyle(
+                                            color: context.textPrimary,
                                             fontSize: 11,
                                             fontWeight: FontWeight.w600,
                                           ),
@@ -997,21 +978,19 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF0F172A),
+                              color: context.cardSubtle,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: const Color(0xFF334155),
-                              ),
+                              border: Border.all(color: context.border),
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
                                 Column(
                                   children: [
-                                    const Text(
+                                    Text(
                                       'Quantidade',
                                       style: TextStyle(
-                                        color: Color(0xFF94A3B8),
+                                        color: context.textSecondary,
                                         fontSize: 10,
                                       ),
                                     ),
@@ -1032,22 +1011,22 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                 Container(
                                   height: 28,
                                   width: 1,
-                                  color: const Color(0xFF334155),
+                                  color: context.border,
                                 ),
                                 Column(
                                   children: [
-                                    const Text(
+                                    Text(
                                       'Lote',
                                       style: TextStyle(
-                                        color: Color(0xFF94A3B8),
+                                        color: context.textSecondary,
                                         fontSize: 10,
                                       ),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
                                       hu.batch ?? 'SEM LOTE',
-                                      style: const TextStyle(
-                                        color: Colors.white,
+                                      style: TextStyle(
+                                        color: context.textPrimary,
                                         fontSize: 13,
                                         fontWeight: FontWeight.bold,
                                         fontFamily: 'monospace',
@@ -1058,22 +1037,22 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                 Container(
                                   height: 28,
                                   width: 1,
-                                  color: const Color(0xFF334155),
+                                  color: context.border,
                                 ),
                                 Column(
                                   children: [
-                                    const Text(
+                                    Text(
                                       'Validade',
                                       style: TextStyle(
-                                        color: Color(0xFF94A3B8),
+                                        color: context.textSecondary,
                                         fontSize: 10,
                                       ),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
                                       _formatDate(hu.expirationDate),
-                                      style: const TextStyle(
-                                        color: Colors.white,
+                                      style: TextStyle(
+                                        color: context.textPrimary,
                                         fontSize: 13,
                                         fontWeight: FontWeight.bold,
                                         fontFamily: 'monospace',
@@ -1090,29 +1069,27 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1E293B),
+                              color: context.card,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: const Color(0xFF334155),
-                              ),
+                              border: Border.all(color: context.border),
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
                                 Column(
                                   children: [
-                                    const Text(
+                                    Text(
                                       'Peso Líq. Total',
                                       style: TextStyle(
-                                        color: Color(0xFF94A3B8),
+                                        color: context.textSecondary,
                                         fontSize: 10,
                                       ),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
                                       '${hu.totalNetWeight.toStringAsFixed(2)} kg',
-                                      style: const TextStyle(
-                                        color: Colors.white,
+                                      style: TextStyle(
+                                        color: context.textPrimary,
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
                                         fontFamily: 'monospace',
@@ -1123,22 +1100,22 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                 Container(
                                   height: 24,
                                   width: 1,
-                                  color: const Color(0xFF334155),
+                                  color: context.border,
                                 ),
                                 Column(
                                   children: [
-                                    const Text(
+                                    Text(
                                       'Peso Bruto Total',
                                       style: TextStyle(
-                                        color: Color(0xFF94A3B8),
+                                        color: context.textSecondary,
                                         fontSize: 10,
                                       ),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
                                       '${hu.totalGrossWeight.toStringAsFixed(2)} kg',
-                                      style: const TextStyle(
-                                        color: Colors.white,
+                                      style: TextStyle(
+                                        color: context.textPrimary,
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
                                         fontFamily: 'monospace',
@@ -1149,14 +1126,14 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                 Container(
                                   height: 24,
                                   width: 1,
-                                  color: const Color(0xFF334155),
+                                  color: context.border,
                                 ),
                                 Column(
                                   children: [
-                                    const Text(
+                                    Text(
                                       'Valor do Volume',
                                       style: TextStyle(
-                                        color: Color(0xFF94A3B8),
+                                        color: context.textSecondary,
                                         fontSize: 10,
                                       ),
                                     ),
@@ -1164,7 +1141,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                     Text(
                                       'R\$ ${hu.totalValue.toStringAsFixed(2)}',
                                       style: const TextStyle(
-                                        color: Color(0xFF34D399),
+                                        color: Color(0xFF10B981),
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
                                         fontFamily: 'monospace',
@@ -1191,12 +1168,12 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                   elevation: 0,
                                 ),
                                 icon: const Icon(
-                                  LucideIcons.move,
+                                  LucideIcons.corner_up_right,
                                   color: Colors.white,
-                                  size: 22,
+                                  size: 20,
                                 ),
                                 label: const Text(
-                                  'MOVER HU',
+                                  'MOVER HU (TRANSFERIR POSIÇÃO)',
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 13,
@@ -1258,7 +1235,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
     required VoidCallback onTap,
   }) {
     return Material(
-      color: const Color(0xFF1E293B),
+      color: context.card,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         onTap: onTap,
@@ -1266,7 +1243,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
-            border: Border.all(color: const Color(0xFF334155)),
+            border: Border.all(color: context.border),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Row(
@@ -1276,8 +1253,8 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: context.textPrimary,
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
                   ),

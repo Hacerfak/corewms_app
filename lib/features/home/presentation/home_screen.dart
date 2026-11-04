@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 
 import '../../auth/presentation/auth_provider.dart';
 import '../../../core/scanner/scanner_service.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/theme_provider.dart';
 import '../../hu/presentation/hu_consultation_screen.dart';
 import '../../inbound/presentation/inbound_orders_list_screen.dart';
 import 'widgets/menu_card.dart';
@@ -23,7 +25,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-
     final scanner = context.read<ScannerService>();
     _scanSubscription = scanner.onScan.listen((barcode) {
       if (!mounted) return;
@@ -37,7 +38,6 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  /// Ao bipar com o laser na tela inicial, direciona direto para a consulta da HU
   void _handleQuickScan(String barcode) {
     final cleanCode = barcode.trim();
     if (cleanCode.isEmpty) return;
@@ -45,20 +45,16 @@ class _HomeScreenState extends State<HomeScreen> {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        backgroundColor: const Color(0xFF1E293B),
+        backgroundColor: context.card,
         content: Row(
           children: [
-            const Icon(
-              LucideIcons.scan_barcode,
-              color: Color(0xFF3B82F6),
-              size: 18,
-            ),
+            const Icon(LucideIcons.scan, color: Color(0xFF3B82F6), size: 18),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 'Identificando HU: $cleanCode...',
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: context.textPrimary,
                   fontFamily: 'monospace',
                 ),
               ),
@@ -85,19 +81,17 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final themeProvider = context.watch<ThemeProvider>();
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
-        elevation: 0,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               auth.selectedCompanyName ?? 'CoreWMS',
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: context.textPrimary,
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
               ),
@@ -106,8 +100,8 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 1),
             Text(
               auth.user?.name ?? 'Operador',
-              style: const TextStyle(
-                color: Color(0xFF94A3B8),
+              style: TextStyle(
+                color: context.textSecondary,
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
               ),
@@ -117,10 +111,18 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(
-              Icons.swap_horiz_rounded,
-              color: Color(0xFF94A3B8),
-              size: 24,
+            icon: Icon(
+              themeProvider.isDarkMode ? LucideIcons.sun : LucideIcons.moon,
+              color: context.textSecondary,
+            ),
+            tooltip: 'Alternar Tema Claro / Escuro',
+            onPressed: () => themeProvider.toggleTheme(),
+          ),
+          IconButton(
+            icon: Icon(
+              LucideIcons.arrow_left_right,
+              color: context.textSecondary,
+              size: 20,
             ),
             tooltip: 'Trocar Empresa / Unidade',
             onPressed: () => context.read<AuthProvider>().switchCompany(),
@@ -133,30 +135,29 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Barra de Instrução do Laser
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E293B),
-                  border: Border.all(color: const Color(0xFF334155)),
+                  color: context.card,
+                  border: Border.all(color: context.border),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(
-                      LucideIcons.scan_barcode,
+                    const Icon(
+                      LucideIcons.scan_line,
                       color: Color(0xFF60A5FA),
                       size: 20,
                     ),
-                    SizedBox(width: 10),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         'Pressione o gatilho para bipar qualquer HU ou toque na rotina desejada:',
                         style: TextStyle(
-                          color: Color(0xFFCBD5E1),
+                          color: context.textSecondary,
                           fontSize: 11,
                         ),
                       ),
@@ -165,8 +166,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-
-              // Grid dos 6 Módulos Operacionais
               Expanded(
                 child: GridView.count(
                   crossAxisCount: 2,
@@ -174,7 +173,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   mainAxisSpacing: 10,
                   childAspectRatio: 1.05,
                   children: [
-                    // 1. Gestão de HUs (Mover, Split, Merge, Qualidade, Estorno, Reimpressão)
                     MenuCard(
                       title: 'Gestão de HU',
                       subtitle: 'Consulta, Mover, Merge, Split e Qualidade',
@@ -190,8 +188,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         );
                       },
                     ),
-
-                    // 2. Recebimento de NF-e (Itens pendentes item a item)
                     MenuCard(
                       title: 'Recebimento',
                       subtitle: 'Descarga e conferência cega/guiada de NF-e',
@@ -210,57 +206,41 @@ class _HomeScreenState extends State<HomeScreen> {
                         );
                       },
                     ),
-
-                    // 3. Separação de Expedição (Agrupado por Posição de Estoque)
                     MenuCard(
                       title: 'Separação',
                       subtitle: 'Picking consolidado e guiado por endereço',
                       icon: LucideIcons.git_merge,
-                      color: const Color(0xFFF59E0B), // Âmbar
+                      color: const Color(0xFFF59E0B),
                       badge: 'PICKING',
                       isEnabled: _hasPermission(auth, 'outbound:picking'),
-                      onTap: () {
-                        // Navega para tarefas de picking
-                      },
+                      onTap: () {},
                     ),
-
-                    // 4. Embalagem (Packing & Montagem de Volumes)
                     MenuCard(
                       title: 'Embalagem',
                       subtitle: 'Conferência de mesa e formação de volumes',
-                      icon: Icons.archive_outlined,
-                      color: const Color(0xFF8B5CF6), // Roxo
+                      icon: LucideIcons.package_search,
+                      color: const Color(0xFF8B5CF6),
                       badge: 'PACKING',
                       isEnabled: _hasPermission(auth, 'outbound:packing'),
-                      onTap: () {
-                        // Navega para pedidos em packing
-                      },
+                      onTap: () {},
                     ),
-
-                    // 5. Conferência de Expedição (Carregamento e Doca)
                     MenuCard(
                       title: 'Conferência',
                       subtitle: 'Check-out de expedição e validação de carga',
-                      icon: Icons.fact_check_outlined,
-                      color: const Color(0xFF06B6D4), // Ciano
+                      icon: LucideIcons.clipboard_check,
+                      color: const Color(0xFF06B6D4),
                       badge: 'EXPEDIÇÃO',
                       isEnabled: _hasPermission(auth, 'outbound:checking'),
-                      onTap: () {
-                        // Navega para checking de expedição
-                      },
+                      onTap: () {},
                     ),
-
-                    // 6. Inventário Cíclico (Contagem Cega por Posição)
                     MenuCard(
                       title: 'Inventário',
                       subtitle: 'Contagem física cega agrupada por posição',
-                      icon: Icons.visibility_off_outlined,
-                      color: const Color(0xFFEC4899), // Rosa
+                      icon: LucideIcons.eye_off,
+                      color: const Color(0xFFEC4899),
                       badge: 'AUDITORIA',
                       isEnabled: _hasPermission(auth, 'cyclecount:execute'),
-                      onTap: () {
-                        // Navega para tarefas de inventário
-                      },
+                      onTap: () {},
                     ),
                   ],
                 ),

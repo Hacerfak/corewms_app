@@ -1,12 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/scanner/qr_scanner_dialog.dart';
 import '../../../../core/scanner/scanner_service.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../data/hu_models.dart';
 import '../hu_provider.dart';
 
@@ -36,11 +37,9 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
   void initState() {
     super.initState();
 
-    // Inicia com sugestão de transferir todo o saldo da origem
     _transferQty = widget.hu.currentQuantity;
     _qtyController.text = widget.hu.currentQuantity.toStringAsFixed(0);
 
-    // Escuta o gatilho laser do coletor Movfast
     final scanner = context.read<ScannerService>();
     _scanSubscription = scanner.onScan.listen((barcode) {
       if (!mounted) return;
@@ -103,7 +102,6 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
         return;
       }
 
-      // Validação 1: Mesmo Produto
       if (destHu.productId != widget.hu.productId) {
         setState(() {
           _resolvedDestinationHu = null;
@@ -115,7 +113,6 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
         return;
       }
 
-      // Validação 2: Mesma Nota Fiscal (ReceiptDocumentId)
       if (destHu.inboundOrderId != widget.hu.inboundOrderId) {
         setState(() {
           _resolvedDestinationHu = null;
@@ -126,7 +123,6 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
         return;
       }
 
-      // Validação 3: Mesmo Lote
       final sourceBatch = widget.hu.batch?.trim().toUpperCase() ?? '';
       final destBatch = destHu.batch?.trim().toUpperCase() ?? '';
       if (sourceBatch != destBatch) {
@@ -140,7 +136,6 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
         return;
       }
 
-      // Validação 4: Status de Qualidade
       if (destHu.qualityStatus != widget.hu.qualityStatus) {
         setState(() {
           _resolvedDestinationHu = null;
@@ -152,13 +147,12 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
         return;
       }
 
-      // Validação 5: HU Destino Ativa
       if (!destHu.canPerformActions) {
         setState(() {
           _resolvedDestinationHu = null;
           _isValidatingDest = false;
           _localError =
-              'A HU de destino está com status "${destHu.status}" e não pode receber saldo.';
+              'A HU de destino está com estado "${destHu.status}" e não pode receber saldo.';
         });
         HapticFeedback.heavyImpact();
         return;
@@ -210,7 +204,7 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
     }
 
     if (_transferQty <= 0) {
-      setState(() => _localError = 'A quantidade deve ser maior que zero.');
+      setState(() => _localError = 'A quantidade deve ser superior a zero.');
       HapticFeedback.heavyImpact();
       return;
     }
@@ -218,7 +212,7 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
     if (_transferQty > widget.hu.currentQuantity) {
       setState(
         () => _localError =
-            'Quantidade solicitada maior que o saldo disponível na origem.',
+            'Quantidade solicitada superior ao saldo disponível na origem.',
       );
       HapticFeedback.heavyImpact();
       return;
@@ -248,8 +242,10 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
     final newDestTotal =
         (_resolvedDestinationHu?.currentQuantity ?? 0) + _transferQty;
 
+    final isDark = context.isDark;
+
     return Dialog(
-      backgroundColor: const Color(0xFF1E293B), // Slate 800
+      backgroundColor: context.card,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       insetPadding: const EdgeInsets.all(16),
       child: SingleChildScrollView(
@@ -266,24 +262,25 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF6366F1).withValues(alpha: 0.15),
+                      color: const Color(0xFF6366F1)
+                          .withValues(alpha: isDark ? 0.2 : 0.12),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(
-                      Icons.call_merge_rounded,
-                      color: Color(0xFF818CF8),
+                      LucideIcons.merge,
+                      color: Color(0xFF6366F1),
                       size: 24,
                     ),
                   ),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Merge de HUs (Agrupamento)',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: context.textPrimary,
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
@@ -291,7 +288,7 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
                         Text(
                           'Consolidar saldo de volumes compatíveis',
                           style: TextStyle(
-                            color: Color(0xFF94A3B8),
+                            color: context.textSecondary,
                             fontSize: 11,
                           ),
                         ),
@@ -306,26 +303,26 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0F172A),
+                  color: context.cardSubtle,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF334155)),
+                  border: Border.all(color: context.border),
                 ),
                 child: Column(
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'HU Origem (Cedente):',
                           style: TextStyle(
-                            color: Color(0xFF94A3B8),
+                            color: context.textSecondary,
                             fontSize: 11,
                           ),
                         ),
                         Text(
                           widget.hu.lpn,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: context.textPrimary,
                             fontWeight: FontWeight.bold,
                             fontFamily: 'monospace',
                             fontSize: 13,
@@ -337,10 +334,10 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'Saldo Disponível:',
                           style: TextStyle(
-                            color: Color(0xFF94A3B8),
+                            color: context.textSecondary,
                             fontSize: 11,
                           ),
                         ),
@@ -358,17 +355,17 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'Lote / Posição:',
                           style: TextStyle(
-                            color: Color(0xFF94A3B8),
+                            color: context.textSecondary,
                             fontSize: 11,
                           ),
                         ),
                         Text(
                           '${widget.hu.batch ?? "SEM LOTE"} • ${widget.hu.currentLocationPath}',
-                          style: const TextStyle(
-                            color: Colors.white70,
+                          style: TextStyle(
+                            color: context.textSecondary,
                             fontFamily: 'monospace',
                             fontSize: 11,
                           ),
@@ -385,14 +382,22 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF450A0A),
+                    color: isDark
+                        ? const Color(0xFF450A0A)
+                        : const Color(0xFFFFF1F2),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF991B1B)),
+                    border: Border.all(
+                      color: isDark
+                          ? const Color(0xFF991B1B)
+                          : const Color(0xFFFECDD3),
+                    ),
                   ),
                   child: Text(
                     _localError ?? provider.errorMessage ?? '',
-                    style: const TextStyle(
-                      color: Color(0xFFFCA5A5),
+                    style: TextStyle(
+                      color: isDark
+                          ? const Color(0xFFFCA5A5)
+                          : const Color(0xFFBE123C),
                       fontSize: 12,
                     ),
                   ),
@@ -404,8 +409,8 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
               TextFormField(
                 controller: _destLpnController,
                 focusNode: _focusDest,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: context.textPrimary,
                   fontFamily: 'monospace',
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
@@ -414,24 +419,27 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
                 onFieldSubmitted: _validateDestinationHu,
                 decoration: InputDecoration(
                   labelText: 'Bipar ou digitar a HU Destino',
-                  labelStyle: const TextStyle(
-                    color: Color(0xFF94A3B8),
+                  labelStyle: TextStyle(
+                    color: context.textSecondary,
                     fontSize: 12,
                   ),
                   prefixIcon: const Icon(
-                    LucideIcons.scan_barcode,
-                    color: Color(0xFF818CF8),
+                    LucideIcons.scan,
+                    color: Color(0xFF6366F1),
+                    size: 20,
                   ),
                   suffixIcon: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: const Icon(
-                          Icons.photo_camera_rounded,
-                          color: Color(0xFF60A5FA),
-                          size: 20,
+                        icon: Icon(
+                          LucideIcons.camera,
+                          color: context.isDark
+                              ? const Color(0xFF60A5FA)
+                              : const Color(0xFF2563EB),
+                          size: 18,
                         ),
-                        tooltip: 'Escanear via Câmera',
+                        tooltip: 'Escanear via Câmara',
                         onPressed: _openCameraScanner,
                       ),
                       if (_isValidatingDest)
@@ -442,15 +450,16 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
                             width: 16,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Color(0xFF818CF8),
+                              color: Color(0xFF6366F1),
                             ),
                           ),
                         )
                       else
                         IconButton(
                           icon: const Icon(
-                            Icons.arrow_forward_rounded,
-                            color: Color(0xFF818CF8),
+                            LucideIcons.arrow_right,
+                            color: Color(0xFF6366F1),
+                            size: 18,
                           ),
                           onPressed: () =>
                               _validateDestinationHu(_destLpnController.text),
@@ -458,10 +467,14 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
                     ],
                   ),
                   filled: true,
-                  fillColor: const Color(0xFF0F172A),
+                  fillColor: context.cardSubtle,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide.none,
+                    borderSide: BorderSide(color: context.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: context.border),
                   ),
                 ),
               ),
@@ -472,9 +485,14 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF064E3B).withValues(alpha: 0.3),
+                    color: const Color(0xFF064E3B)
+                        .withValues(alpha: isDark ? 0.3 : 0.12),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFF059669)),
+                    border: Border.all(
+                      color: isDark
+                          ? const Color(0xFF059669)
+                          : const Color(0xFFA7F3D0),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -485,15 +503,15 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
                           Row(
                             children: [
                               const Icon(
-                                Icons.check_circle_rounded,
-                                color: Color(0xFF34D399),
+                                LucideIcons.circle_check,
+                                color: Color(0xFF10B981),
                                 size: 16,
                               ),
                               const SizedBox(width: 6),
                               Text(
                                 'Destino: ${_resolvedDestinationHu!.lpn}',
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: context.textPrimary,
                                   fontWeight: FontWeight.bold,
                                   fontFamily: 'monospace',
                                   fontSize: 13,
@@ -504,7 +522,7 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
                           Text(
                             'Saldo Atual: ${_resolvedDestinationHu!.currentQuantity.toStringAsFixed(0)}',
                             style: const TextStyle(
-                              color: Color(0xFF34D399),
+                              color: Color(0xFF10B981),
                               fontWeight: FontWeight.bold,
                               fontSize: 12,
                             ),
@@ -514,8 +532,8 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
                       const SizedBox(height: 4),
                       Text(
                         'Endereço: ${_resolvedDestinationHu!.currentLocationPath}',
-                        style: const TextStyle(
-                          color: Color(0xFFCBD5E1),
+                        style: TextStyle(
+                          color: context.textSecondary,
                           fontSize: 11,
                           fontFamily: 'monospace',
                         ),
@@ -536,8 +554,8 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: context.textPrimary,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         fontFamily: 'monospace',
@@ -545,20 +563,24 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
                       onChanged: _onQtyChanged,
                       decoration: InputDecoration(
                         labelText: 'Qtd a Transferir',
-                        labelStyle: const TextStyle(
-                          color: Color(0xFF94A3B8),
+                        labelStyle: TextStyle(
+                          color: context.textSecondary,
                           fontSize: 12,
                         ),
                         suffixText: widget.hu.productBaseUnit,
-                        suffixStyle: const TextStyle(
-                          color: Color(0xFF94A3B8),
+                        suffixStyle: TextStyle(
+                          color: context.textSecondary,
                           fontWeight: FontWeight.bold,
                         ),
                         filled: true,
-                        fillColor: const Color(0xFF0F172A),
+                        fillColor: context.cardSubtle,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide.none,
+                          borderSide: BorderSide(color: context.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: context.border),
                         ),
                       ),
                       validator: (v) {
@@ -576,7 +598,7 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
                   ),
                   const SizedBox(width: 8),
                   SizedBox(
-                    height: 52,
+                    height: 50,
                     child: OutlinedButton(
                       onPressed: _setTransferAll,
                       style: OutlinedButton.styleFrom(
@@ -590,14 +612,14 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            Icons.all_inclusive,
-                            color: Color(0xFF818CF8),
+                            LucideIcons.infinity,
+                            color: Color(0xFF6366F1),
                             size: 16,
                           ),
                           Text(
                             'TUDO',
                             style: TextStyle(
-                              color: Color(0xFF818CF8),
+                              color: Color(0xFF6366F1),
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
                             ),
@@ -614,18 +636,19 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0F172A),
+                  color: context.cardSubtle,
                   borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: context.border),
                 ),
                 child: Column(
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'Sobra na Origem:',
                           style: TextStyle(
-                            color: Color(0xFF94A3B8),
+                            color: context.textSecondary,
                             fontSize: 11,
                           ),
                         ),
@@ -634,7 +657,7 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
                           style: TextStyle(
                             color: remainingSource == 0
                                 ? const Color(0xFFEF4444)
-                                : const Color(0xFF38BDF8),
+                                : const Color(0xFF2563EB),
                             fontWeight: FontWeight.bold,
                             fontFamily: 'monospace',
                             fontSize: 12,
@@ -647,15 +670,15 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
                       const Row(
                         children: [
                           Icon(
-                            Icons.info_outline,
+                            LucideIcons.info,
                             size: 12,
-                            color: Color(0xFFF87171),
+                            color: Color(0xFFEF4444),
                           ),
                           SizedBox(width: 4),
                           Text(
                             'A HU de origem será consumida/baixada.',
                             style: TextStyle(
-                              color: Color(0xFFF87171),
+                              color: Color(0xFFEF4444),
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
                             ),
@@ -664,14 +687,14 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
                       ),
                     ],
                     if (_resolvedDestinationHu != null) ...[
-                      const Divider(color: Color(0xFF334155), height: 16),
+                      Divider(color: context.border, height: 16),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
+                          Text(
                             'Novo Saldo no Destino:',
                             style: TextStyle(
-                              color: Color(0xFF94A3B8),
+                              color: context.textSecondary,
                               fontSize: 11,
                             ),
                           ),
@@ -702,15 +725,15 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
                           : () => Navigator.of(context).pop(),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: const BorderSide(color: Color(0xFF475569)),
+                        side: BorderSide(color: context.border),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      child: const Text(
+                      child: Text(
                         'CANCELAR',
                         style: TextStyle(
-                          color: Color(0xFF94A3B8),
+                          color: context.textSecondary,
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
                         ),
@@ -727,6 +750,7 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
                           : _submit,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF6366F1),
+                        foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),

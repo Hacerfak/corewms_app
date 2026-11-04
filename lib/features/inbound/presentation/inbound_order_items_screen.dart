@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../auth/presentation/auth_provider.dart';
 import '../../hu/data/hu_models.dart';
 import '../../hu/presentation/hu_provider.dart';
+import '../../../core/theme/app_theme.dart';
 import '../data/inbound_models.dart';
 import 'conferencia_item_screen.dart';
 import 'inbound_provider.dart';
@@ -40,7 +41,6 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
     final auth = context.read<AuthProvider>();
     final inboundProvider = context.read<InboundProvider>();
 
-    // Validação contra concorrência: item travado por outro operador
     final isLockedByOther =
         item.isReceiving &&
         item.lockedByUserId != null &&
@@ -50,20 +50,16 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
       final proceed = await showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
-          backgroundColor: const Color(0xFF1E293B),
           title: const Row(
             children: [
-              Icon(Icons.lock_rounded, color: Color(0xFFF59E0B), size: 22),
+              Icon(LucideIcons.lock, color: Color(0xFFF59E0B), size: 22),
               SizedBox(width: 8),
-              Text(
-                'Item em Conferência',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
+              Text('Item em Conferência', style: TextStyle(fontSize: 16)),
             ],
           ),
           content: Text(
             'Este item está sendo conferido por "${item.lockedByUserName ?? "outro operador"}".\n\nAguarde a finalização ou solicite a liberação da linha.',
-            style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 13),
+            style: TextStyle(color: context.textSecondary, fontSize: 13),
           ),
           actions: [
             ElevatedButton(
@@ -84,21 +80,23 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
 
     if (!mounted) return;
 
-    // REGRA 3: Sempre abre a seleção de doca ao iniciar ou voltar a receber
     final chosenDockId = await showDialog<String>(
       context: context,
       barrierDismissible: false,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(LucideIcons.warehouse, color: Color(0xFF10B981), size: 22),
-            SizedBox(width: 8),
+            const Icon(
+              LucideIcons.warehouse,
+              color: Color(0xFF10B981),
+              size: 22,
+            ),
+            const SizedBox(width: 8),
             Text(
               'Doca de Recebimento',
               style: TextStyle(
-                color: Colors.white,
+                color: context.textPrimary,
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
@@ -108,11 +106,14 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
         content: SizedBox(
           width: double.maxFinite,
           child: inboundProvider.docks.isEmpty
-              ? const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20),
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
                   child: Text(
                     'Nenhuma doca ativa encontrada na Topologia.',
-                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                    style: TextStyle(
+                      color: context.textSecondary,
+                      fontSize: 12,
+                    ),
                   ),
                 )
               : ListView.separated(
@@ -133,12 +134,12 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
                         ),
                         decoration: BoxDecoration(
                           color: isPrevious
-                              ? const Color(0xFF064E3B).withValues(alpha: 0.3)
-                              : const Color(0xFF0F172A),
+                              ? const Color(0xFF064E3B).withValues(alpha: 0.15)
+                              : context.cardSubtle,
                           border: Border.all(
                             color: isPrevious
                                 ? const Color(0xFF059669)
-                                : const Color(0xFF334155),
+                                : context.border,
                           ),
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -148,7 +149,7 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
                               LucideIcons.warehouse,
                               color: isPrevious
                                   ? const Color(0xFF34D399)
-                                  : const Color(0xFF64748B),
+                                  : context.textSecondary,
                               size: 18,
                             ),
                             const SizedBox(width: 10),
@@ -158,7 +159,7 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
                                 style: TextStyle(
                                   color: isPrevious
                                       ? const Color(0xFF34D399)
-                                      : Colors.white,
+                                      : context.textPrimary,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 13,
                                   fontFamily: 'monospace',
@@ -167,7 +168,7 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
                             ),
                             if (isPrevious)
                               const Icon(
-                                Icons.check_circle_rounded,
+                                LucideIcons.circle_check,
                                 color: Color(0xFF34D399),
                                 size: 16,
                               ),
@@ -181,10 +182,10 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(null),
-            child: const Text(
+            child: Text(
               'CANCELAR',
               style: TextStyle(
-                color: Color(0xFF94A3B8),
+                color: context.textSecondary,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -195,7 +196,6 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
 
     if (chosenDockId == null || !mounted) return;
 
-    // Trava a linha do item na doca escolhida
     final success = await inboundProvider.startReceivingItem(
       orderItemId: item.id,
       dockLocationId: chosenDockId,
@@ -214,7 +214,6 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
       return;
     }
 
-    // Carrega embalagens cadastradas no produto
     final huProvider = context.read<HuProvider>();
     await huProvider.loadProductPackagings(item.productId!);
 
@@ -251,7 +250,6 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
       ),
     );
 
-    // Recarrega os itens ao retornar da conferência
     if (mounted) {
       inboundProvider.loadOrderDetails(widget.orderSummary.id);
     }
@@ -271,20 +269,20 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
     final completedCount = totalItems - pendingItems.length;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
         title: Text(
           widget.orderSummary.invoiceNumber != null
               ? 'NF ${widget.orderSummary.invoiceNumber} • Itens'
               : 'Itens da NF-e',
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: context.textPrimary,
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        elevation: 0,
         actions: [
-          // REGRA 1: Botão explícito de recarregar
           IconButton(
-            icon: const Icon(Icons.refresh, color: Color(0xFF94A3B8)),
+            icon: Icon(LucideIcons.refresh_cw, color: context.textSecondary),
             tooltip: 'Recarregar Itens',
             onPressed: () => provider.loadOrderDetails(widget.orderSummary.id),
           ),
@@ -295,33 +293,35 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
               child: CircularProgressIndicator(color: Color(0xFF10B981)),
             )
           : order == null
-          ? const Center(
+          ? Center(
               child: Text(
                 'Ordem não encontrada.',
-                style: TextStyle(color: Color(0xFF64748B)),
+                style: TextStyle(color: context.textSecondary),
               ),
             )
           : RefreshIndicator(
               color: const Color(0xFF10B981),
-              backgroundColor: const Color(0xFF1E293B),
+              backgroundColor: context.card,
               onRefresh: () =>
                   provider.loadOrderDetails(widget.orderSummary.id),
               child: Column(
                 children: [
-                  // Barra de Progresso da NF
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 10,
                     ),
-                    color: const Color(0xFF1E293B),
+                    decoration: BoxDecoration(
+                      color: context.card,
+                      border: Border(bottom: BorderSide(color: context.border)),
+                    ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
                           'Pendentes: ${pendingItems.length} de $totalItems itens',
-                          style: const TextStyle(
-                            color: Color(0xFFCBD5E1),
+                          style: TextStyle(
+                            color: context.textSecondary,
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
@@ -337,8 +337,6 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
                       ],
                     ),
                   ),
-
-                  // Lista dos Itens
                   Expanded(
                     child: pendingItems.isEmpty
                         ? Center(
@@ -348,32 +346,31 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   const Icon(
-                                    Icons.check_circle_outline_rounded,
+                                    LucideIcons.circle_check,
                                     size: 64,
                                     color: Color(0xFF10B981),
                                   ),
                                   const SizedBox(height: 12),
-                                  const Text(
+                                  Text(
                                     'Recebimento 100% Concluído!',
                                     style: TextStyle(
-                                      color: Colors.white,
+                                      color: context.textPrimary,
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
-                                  const Text(
+                                  Text(
                                     'Todos os itens desta nota fiscal já foram descarregados e conferidos na Doca.',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
-                                      color: Color(0xFF94A3B8),
+                                      color: context.textSecondary,
                                       fontSize: 12,
                                     ),
                                   ),
                                   const SizedBox(height: 20),
                                   ElevatedButton(
                                     onPressed: () {
-                                      // Recarrega as ordens ativas para remover a NF finalizada da lista
                                       context
                                           .read<InboundProvider>()
                                           .loadOrders();
@@ -419,7 +416,7 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
                                   item.lockedByUserId != null;
 
                               return Material(
-                                color: const Color(0xFF1E293B),
+                                color: context.card,
                                 borderRadius: BorderRadius.circular(12),
                                 child: InkWell(
                                   borderRadius: BorderRadius.circular(12),
@@ -432,7 +429,7 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
                                             ? const Color(0xFFF59E0B)
                                             : isLockedByMe
                                             ? const Color(0xFF059669)
-                                            : const Color(0xFF334155),
+                                            : context.border,
                                         width: isReceiving ? 1.5 : 1,
                                       ),
                                       borderRadius: BorderRadius.circular(12),
@@ -441,7 +438,6 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        // Topo do Card: Linha, SKU e Status
                                         Row(
                                           mainAxisAlignment:
                                               MainAxisAlignment.spaceBetween,
@@ -455,9 +451,7 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
                                                         vertical: 2,
                                                       ),
                                                   decoration: BoxDecoration(
-                                                    color: const Color(
-                                                      0xFF0F172A,
-                                                    ),
+                                                    color: context.cardSubtle,
                                                     borderRadius:
                                                         BorderRadius.circular(
                                                           4,
@@ -466,7 +460,7 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
                                                   child: Text(
                                                     '#${item.lineNumber}',
                                                     style: const TextStyle(
-                                                      color: Color(0xFF60A5FA),
+                                                      color: Color(0xFF2563EB),
                                                       fontSize: 11,
                                                       fontWeight:
                                                           FontWeight.bold,
@@ -476,8 +470,8 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
                                                 const SizedBox(width: 8),
                                                 Text(
                                                   item.sku,
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
+                                                  style: TextStyle(
+                                                    color: context.textPrimary,
                                                     fontWeight: FontWeight.bold,
                                                     fontSize: 14,
                                                     fontFamily: 'monospace',
@@ -497,14 +491,12 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
                                           item.description,
                                           maxLines: 2,
                                           overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            color: Color(0xFFCBD5E1),
+                                          style: TextStyle(
+                                            color: context.textSecondary,
                                             fontSize: 12,
                                           ),
                                         ),
                                         const SizedBox(height: 10),
-
-                                        // REGRA 2: Tarja exclusiva do Operador (sem o texto da Doca)
                                         if (isReceiving) ...[
                                           Container(
                                             padding: const EdgeInsets.symmetric(
@@ -514,9 +506,10 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
                                             decoration: BoxDecoration(
                                               color: isLockedByMe
                                                   ? const Color(0xFF064E3B)
-                                                        .withValues(alpha: 0.35)
-                                                  : const Color(0xFF451A03)
-                                                        .withValues(alpha: 0.4),
+                                                        .withValues(alpha: 0.15)
+                                                  : const Color(
+                                                      0xFF451A03,
+                                                    ).withValues(alpha: 0.15),
                                               borderRadius:
                                                   BorderRadius.circular(6),
                                               border: Border.all(
@@ -529,13 +522,12 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
                                               children: [
                                                 Icon(
                                                   isLockedByMe
-                                                      ? Icons.person_rounded
-                                                      : Icons
-                                                            .lock_person_rounded,
+                                                      ? LucideIcons.user_check
+                                                      : LucideIcons.user_x,
                                                   size: 14,
                                                   color: isLockedByMe
-                                                      ? const Color(0xFF34D399)
-                                                      : const Color(0xFFFBBF24),
+                                                      ? const Color(0xFF059669)
+                                                      : const Color(0xFFD97706),
                                                 ),
                                                 const SizedBox(width: 6),
                                                 Expanded(
@@ -549,10 +541,10 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
                                                     style: TextStyle(
                                                       color: isLockedByMe
                                                           ? const Color(
-                                                              0xFF34D399,
+                                                              0xFF059669,
                                                             )
                                                           : const Color(
-                                                              0xFFFDE68A,
+                                                              0xFFD97706,
                                                             ),
                                                       fontSize: 11,
                                                       fontWeight:
@@ -565,25 +557,19 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
                                           ),
                                           const SizedBox(height: 10),
                                         ],
-
-                                        // REGRA 2: Rodapé do Card
-                                        // [Recebido / Esperado] | [Doca no Meio] | [Falta]
                                         Row(
                                           mainAxisAlignment:
                                               MainAxisAlignment.spaceBetween,
                                           children: [
-                                            // 1. Quantidade sem o texto "Progresso:"
                                             Text(
                                               '${item.receivedQuantity.toStringAsFixed(0)} / ${item.expectedQuantity.toStringAsFixed(0)} ${item.unit}',
-                                              style: const TextStyle(
-                                                color: Colors.white,
+                                              style: TextStyle(
+                                                color: context.textPrimary,
                                                 fontWeight: FontWeight.bold,
                                                 fontFamily: 'monospace',
                                                 fontSize: 12,
                                               ),
                                             ),
-
-                                            // 2. Doca no centro destacada
                                             Container(
                                               padding:
                                                   const EdgeInsets.symmetric(
@@ -591,7 +577,7 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
                                                     vertical: 2,
                                                   ),
                                               decoration: BoxDecoration(
-                                                color: const Color(0xFF0F172A),
+                                                color: context.cardSubtle,
                                                 borderRadius:
                                                     BorderRadius.circular(6),
                                                 border: Border.all(
@@ -599,7 +585,7 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
                                                       item.dockLocationPath !=
                                                           null
                                                       ? const Color(0xFF0284C7)
-                                                      : const Color(0xFF334155),
+                                                      : context.border,
                                                 ),
                                               ),
                                               child: Row(
@@ -612,11 +598,9 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
                                                         item.dockLocationPath !=
                                                             null
                                                         ? const Color(
-                                                            0xFF38BDF8,
+                                                            0xFF0284C7,
                                                           )
-                                                        : const Color(
-                                                            0xFF64748B,
-                                                          ),
+                                                        : context.textMuted,
                                                   ),
                                                   const SizedBox(width: 4),
                                                   Text(
@@ -629,11 +613,9 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
                                                           item.dockLocationPath !=
                                                               null
                                                           ? const Color(
-                                                              0xFF38BDF8,
+                                                              0xFF0284C7,
                                                             )
-                                                          : const Color(
-                                                              0xFF64748B,
-                                                            ),
+                                                          : context.textMuted,
                                                       fontSize: 10,
                                                       fontWeight:
                                                           FontWeight.bold,
@@ -643,12 +625,10 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
                                                 ],
                                               ),
                                             ),
-
-                                            // 3. Saldo Faltante
                                             Text(
                                               'Falta: ${(item.expectedQuantity - item.receivedQuantity).toStringAsFixed(0)} ${item.unit}',
                                               style: const TextStyle(
-                                                color: Color(0xFFFBBF24),
+                                                color: Color(0xFFF59E0B),
                                                 fontWeight: FontWeight.bold,
                                                 fontFamily: 'monospace',
                                                 fontSize: 12,
@@ -721,7 +701,7 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
         child: const Text(
           'Parcial',
           style: TextStyle(
-            color: Color(0xFF60A5FA),
+            color: Color(0xFF2563EB),
             fontSize: 10,
             fontWeight: FontWeight.bold,
           ),
@@ -732,16 +712,14 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: const Color(0xFF64748B).withValues(alpha: 0.15),
+        color: context.cardSubtle,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: const Color(0xFF64748B).withValues(alpha: 0.4),
-        ),
+        border: Border.all(color: context.border),
       ),
-      child: const Text(
+      child: Text(
         'Aguardando',
         style: TextStyle(
-          color: Color(0xFF94A3B8),
+          color: context.textSecondary,
           fontSize: 10,
           fontWeight: FontWeight.bold,
         ),

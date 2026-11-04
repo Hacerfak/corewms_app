@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_lucide/flutter_lucide.dart';
 
 import '../../../../core/api/api_client.dart';
 import '../../../../core/storage/storage_service.dart';
+import '../../../../core/theme/app_theme.dart';
 
 class ServerConfigDialog extends StatefulWidget {
   final ApiClient apiClient;
@@ -56,7 +57,6 @@ class _ServerConfigDialogState extends State<ServerConfigDialog> {
     });
 
     final success = await widget.apiClient.testConnection(input);
-
     if (!mounted) return;
 
     setState(() {
@@ -79,10 +79,8 @@ class _ServerConfigDialogState extends State<ServerConfigDialog> {
     if (input.isEmpty) return;
 
     final sanitized = StorageService.sanitizeUrl(input);
-
     await widget.storageService.saveBaseUrl(sanitized);
     widget.apiClient.updateBaseUrl(sanitized);
-
     widget.onSaved();
     HapticFeedback.mediumImpact();
 
@@ -108,8 +106,37 @@ class _ServerConfigDialogState extends State<ServerConfigDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDark;
+
+    // Cores dinâmicas para a caixa de status de teste
+    final Color statusBoxBg;
+    final Color statusBoxBorder;
+    final Color statusTextColor;
+
+    if (_testSuccess == true) {
+      statusBoxBg = isDark
+          ? const Color(0xFF064E3B).withValues(alpha: 0.3)
+          : const Color(0xFFECFDF5);
+      statusBoxBorder = isDark
+          ? const Color(0xFF059669)
+          : const Color(0xFFA7F3D0);
+      statusTextColor = isDark
+          ? const Color(0xFF34D399)
+          : const Color(0xFF065F46);
+    } else {
+      statusBoxBg = isDark
+          ? const Color(0xFF450A0A).withValues(alpha: 0.35)
+          : const Color(0xFFFEF2F2);
+      statusBoxBorder = isDark
+          ? const Color(0xFF991B1B)
+          : const Color(0xFFFECACA);
+      statusTextColor = isDark
+          ? const Color(0xFFFCA5A5)
+          : const Color(0xFF991B1B);
+    }
+
     return Dialog(
-      backgroundColor: Colors.white,
+      backgroundColor: context.card,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: Padding(
@@ -124,7 +151,8 @@ class _ServerConfigDialogState extends State<ServerConfigDialog> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2563EB).withValues(alpha: 0.1),
+                    color: const Color(0xFF2563EB)
+                        .withValues(alpha: isDark ? 0.2 : 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(
@@ -134,14 +162,14 @@ class _ServerConfigDialogState extends State<ServerConfigDialog> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Conexão do Servidor',
                         style: TextStyle(
-                          color: Color(0xFF0F172A),
+                          color: context.textPrimary,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -149,7 +177,7 @@ class _ServerConfigDialogState extends State<ServerConfigDialog> {
                       Text(
                         'Endereço da instância CoreWMS',
                         style: TextStyle(
-                          color: Color(0xFF64748B),
+                          color: context.textSecondary,
                           fontSize: 12,
                         ),
                       ),
@@ -164,46 +192,43 @@ class _ServerConfigDialogState extends State<ServerConfigDialog> {
             TextFormField(
               controller: _urlController,
               keyboardType: TextInputType.url,
-              style: const TextStyle(
-                color: Color(0xFF0F172A),
+              style: TextStyle(
+                color: context.textPrimary,
                 fontFamily: 'monospace',
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
               decoration: InputDecoration(
                 labelText: 'URL Base do Servidor',
-                labelStyle: const TextStyle(
-                  color: Color(0xFF64748B),
+                labelStyle: TextStyle(
+                  color: context.textSecondary,
                   fontSize: 12,
                 ),
                 hintText: 'https://wms.empresa.com.br',
-                hintStyle: const TextStyle(
-                  color: Color(0xFF94A3B8),
-                  fontSize: 12,
-                ),
-                prefixIcon: const Icon(
+                hintStyle: TextStyle(color: context.textMuted, fontSize: 12),
+                prefixIcon: Icon(
                   LucideIcons.globe,
-                  color: Color(0xFF64748B),
+                  color: context.textSecondary,
                   size: 18,
                 ),
                 suffixIcon: IconButton(
-                  icon: const Icon(
+                  icon: Icon(
                     LucideIcons.rotate_ccw,
                     size: 16,
-                    color: Color(0xFF64748B),
+                    color: context.textSecondary,
                   ),
                   tooltip: 'Restaurar Padrão',
                   onPressed: _restoreDefault,
                 ),
                 filled: true,
-                fillColor: const Color(0xFFF8FAFC),
+                fillColor: context.cardSubtle,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                  borderSide: BorderSide(color: context.border),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                  borderSide: BorderSide(color: context.border),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -220,8 +245,8 @@ class _ServerConfigDialogState extends State<ServerConfigDialog> {
             OutlinedButton.icon(
               onPressed: _isTesting ? null : _testConnection,
               style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF334155),
-                side: const BorderSide(color: Color(0xFFCBD5E1)),
+                foregroundColor: context.textPrimary,
+                side: BorderSide(color: context.border),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -255,15 +280,9 @@ class _ServerConfigDialogState extends State<ServerConfigDialog> {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: _testSuccess == true
-                      ? const Color(0xFFECFDF5)
-                      : const Color(0xFFFEF2F2),
+                  color: statusBoxBg,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: _testSuccess == true
-                        ? const Color(0xFFA7F3D0)
-                        : const Color(0xFFFECACA),
-                  ),
+                  border: Border.all(color: statusBoxBorder),
                 ),
                 child: Row(
                   children: [
@@ -272,18 +291,14 @@ class _ServerConfigDialogState extends State<ServerConfigDialog> {
                           ? LucideIcons.circle_check
                           : LucideIcons.circle_alert,
                       size: 16,
-                      color: _testSuccess == true
-                          ? const Color(0xFF059669)
-                          : const Color(0xFFDC2626),
+                      color: statusTextColor,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _statusMessage!,
                         style: TextStyle(
-                          color: _testSuccess == true
-                              ? const Color(0xFF065F46)
-                              : const Color(0xFF991B1B),
+                          color: statusTextColor,
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
                         ),
@@ -293,7 +308,6 @@ class _ServerConfigDialogState extends State<ServerConfigDialog> {
                 ),
               ),
             ],
-
             const SizedBox(height: 20),
 
             // Ações do Modal
@@ -303,7 +317,7 @@ class _ServerConfigDialogState extends State<ServerConfigDialog> {
                   child: TextButton(
                     onPressed: () => Navigator.of(context).pop(),
                     style: TextButton.styleFrom(
-                      foregroundColor: const Color(0xFF64748B),
+                      foregroundColor: context.textSecondary,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -320,7 +334,9 @@ class _ServerConfigDialogState extends State<ServerConfigDialog> {
                   child: ElevatedButton(
                     onPressed: _save,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0F172A),
+                      backgroundColor: isDark
+                          ? const Color(0xFF2563EB)
+                          : const Color(0xFF0F172A),
                       foregroundColor: Colors.white,
                       elevation: 0,
                       shape: RoundedRectangleBorder(

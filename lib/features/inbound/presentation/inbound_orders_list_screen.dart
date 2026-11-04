@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/scanner/qr_scanner_dialog.dart';
 import '../../../core/scanner/scanner_service.dart';
+import '../../../core/theme/app_theme.dart';
 import 'inbound_order_items_screen.dart';
 import 'inbound_provider.dart';
 
@@ -61,17 +62,18 @@ class _InboundOrdersListScreenState extends State<InboundOrdersListScreen> {
     final provider = context.watch<InboundProvider>();
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
-        title: const Text(
+        title: Text(
           'Recebimento de Cargas',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: context.textPrimary,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: Color(0xFF94A3B8)),
+            icon: Icon(LucideIcons.refresh_cw, color: context.textSecondary),
             tooltip: 'Atualizar Ordens',
             onPressed: () =>
                 provider.loadOrders(search: _searchController.text),
@@ -80,98 +82,87 @@ class _InboundOrdersListScreenState extends State<InboundOrdersListScreen> {
       ),
       body: Column(
         children: [
-          // Barra de Instrução & Busca
+          // Barra de Pesquisa Adaptável
           Container(
             padding: const EdgeInsets.all(12),
-            color: const Color(0xFF1E293B),
-            child: Column(
+            decoration: BoxDecoration(
+              color: context.card,
+              border: Border(bottom: BorderSide(color: context.border)),
+            ),
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _searchController,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontFamily: 'monospace',
-                          fontSize: 13,
-                        ),
-                        textInputAction: TextInputAction.search,
-                        onFieldSubmitted: (v) => provider.loadOrders(search: v),
-                        decoration: InputDecoration(
-                          hintText: 'Bipar ou digitar NF-e / Chave...',
-                          hintStyle: const TextStyle(
-                            color: Color(0xFF64748B),
-                            fontSize: 12,
+                Expanded(
+                  child: TextFormField(
+                    controller: _searchController,
+                    style: TextStyle(
+                      color: context.textPrimary,
+                      fontFamily: 'monospace',
+                      fontSize: 13,
+                    ),
+                    textInputAction: TextInputAction.search,
+                    onFieldSubmitted: (v) => provider.loadOrders(search: v),
+                    decoration: InputDecoration(
+                      hintText: 'Bipar ou digitar NF-e / Chave...',
+                      prefixIcon: const Icon(
+                        LucideIcons.scan_line,
+                        color: Color(0xFF10B981),
+                        size: 18,
+                      ),
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(
+                              LucideIcons.camera,
+                              color: Color(0xFF34D399),
+                              size: 18,
+                            ),
+                            onPressed: _openCamera,
                           ),
-                          prefixIcon: const Icon(
-                            LucideIcons.scan_barcode,
-                            color: Color(0xFF10B981),
-                            size: 20,
-                          ),
-                          suffixIcon: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.photo_camera_rounded,
-                                  color: Color(0xFF34D399),
-                                  size: 18,
-                                ),
-                                onPressed: _openCamera,
+                          if (_searchController.text.isNotEmpty)
+                            IconButton(
+                              icon: Icon(
+                                LucideIcons.x,
+                                color: context.textSecondary,
+                                size: 18,
                               ),
-                              if (_searchController.text.isNotEmpty)
-                                IconButton(
-                                  icon: const Icon(
-                                    LucideIcons.x,
-                                    color: Color(0xFF64748B),
-                                    size: 18,
-                                  ),
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    provider.loadOrders();
-                                  },
-                                ),
-                            ],
-                          ),
-                          filled: true,
-                          fillColor: const Color(0xFF0F172A),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
+                              onPressed: () {
+                                _searchController.clear();
+                                provider.loadOrders();
+                              },
+                            ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      height: 46,
-                      child: ElevatedButton(
-                        onPressed: () =>
-                            provider.loadOrders(search: _searchController.text),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF059669),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: const Text(
-                          'BUSCAR',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  height: 46,
+                  child: ElevatedButton(
+                    onPressed: () =>
+                        provider.loadOrders(search: _searchController.text),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF059669),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                  ],
+                    child: const Text(
+                      'BUSCAR',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
 
-          // Lista de Ordens Aptas com Pull-to-Refresh
+          // Lista de Ordens
           Expanded(
             child: provider.isLoading
                 ? const Center(
@@ -179,7 +170,7 @@ class _InboundOrdersListScreenState extends State<InboundOrdersListScreen> {
                   )
                 : RefreshIndicator(
                     color: const Color(0xFF10B981),
-                    backgroundColor: const Color(0xFF1E293B),
+                    backgroundColor: context.card,
                     onRefresh: () =>
                         provider.loadOrders(search: _searchController.text),
                     child: provider.orders.isEmpty
@@ -192,34 +183,34 @@ class _InboundOrdersListScreenState extends State<InboundOrdersListScreen> {
                                     constraints: BoxConstraints(
                                       minHeight: constraints.maxHeight,
                                     ),
-                                    child: const Center(
+                                    child: Center(
                                       child: Padding(
-                                        padding: EdgeInsets.all(24),
+                                        padding: const EdgeInsets.all(24),
                                         child: Column(
                                           mainAxisAlignment:
                                               MainAxisAlignment.center,
                                           children: [
                                             Icon(
-                                              Icons.inbox_rounded,
+                                              LucideIcons.inbox,
                                               size: 56,
-                                              color: Color(0xFF334155),
+                                              color: context.textMuted,
                                             ),
-                                            SizedBox(height: 12),
+                                            const SizedBox(height: 12),
                                             Text(
                                               'Nenhuma ordem aguardando recebimento',
                                               textAlign: TextAlign.center,
                                               style: TextStyle(
-                                                color: Colors.white70,
+                                                color: context.textPrimary,
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.bold,
                                               ),
                                             ),
-                                            SizedBox(height: 4),
+                                            const SizedBox(height: 4),
                                             Text(
                                               'Apenas notas fiscais com cadastro de itens 100% revisado na web são exibidas aqui.',
                                               textAlign: TextAlign.center,
                                               style: TextStyle(
-                                                color: Color(0xFF64748B),
+                                                color: context.textSecondary,
                                                 fontSize: 12,
                                               ),
                                             ),
@@ -242,7 +233,7 @@ class _InboundOrdersListScreenState extends State<InboundOrdersListScreen> {
                                   order.status.toUpperCase() == 'RECEIVING';
 
                               return Material(
-                                color: const Color(0xFF1E293B),
+                                color: context.card,
                                 borderRadius: BorderRadius.circular(12),
                                 child: InkWell(
                                   borderRadius: BorderRadius.circular(12),
@@ -254,8 +245,6 @@ class _InboundOrdersListScreenState extends State<InboundOrdersListScreen> {
                                         ),
                                       ),
                                     );
-
-                                    // Ao retornar para a tela de ordens, recarrega a listagem
                                     if (context.mounted) {
                                       context
                                           .read<InboundProvider>()
@@ -270,7 +259,7 @@ class _InboundOrdersListScreenState extends State<InboundOrdersListScreen> {
                                       border: Border.all(
                                         color: isReceiving
                                             ? const Color(0xFF059669)
-                                            : const Color(0xFF334155),
+                                            : context.border,
                                       ),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
@@ -294,8 +283,8 @@ class _InboundOrdersListScreenState extends State<InboundOrdersListScreen> {
                                                   order.invoiceNumber != null
                                                       ? 'NF: ${order.invoiceNumber}/${order.invoiceSerie ?? "1"}'
                                                       : 'Chave: ${order.accessKey.substring(0, 10)}...',
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
+                                                  style: TextStyle(
+                                                    color: context.textPrimary,
                                                     fontWeight: FontWeight.bold,
                                                     fontSize: 14,
                                                   ),
@@ -315,7 +304,7 @@ class _InboundOrdersListScreenState extends State<InboundOrdersListScreen> {
                                                       ).withValues(alpha: 0.2)
                                                     : const Color(
                                                         0xFF2563EB,
-                                                      ).withValues(alpha: 0.2),
+                                                      ).withValues(alpha: 0.15),
                                                 borderRadius:
                                                     BorderRadius.circular(6),
                                                 border: Border.all(
@@ -325,7 +314,7 @@ class _InboundOrdersListScreenState extends State<InboundOrdersListScreen> {
                                                         ).withValues(alpha: 0.5)
                                                       : const Color(0xFF2563EB)
                                                             .withValues(
-                                                              alpha: 0.5,
+                                                              alpha: 0.4,
                                                             ),
                                                 ),
                                               ),
@@ -336,7 +325,7 @@ class _InboundOrdersListScreenState extends State<InboundOrdersListScreen> {
                                                 style: TextStyle(
                                                   color: isReceiving
                                                       ? const Color(0xFF34D399)
-                                                      : const Color(0xFF60A5FA),
+                                                      : const Color(0xFF2563EB),
                                                   fontSize: 10,
                                                   fontWeight: FontWeight.bold,
                                                 ),
@@ -347,8 +336,8 @@ class _InboundOrdersListScreenState extends State<InboundOrdersListScreen> {
                                         const SizedBox(height: 6),
                                         Text(
                                           order.issuerName,
-                                          style: const TextStyle(
-                                            color: Color(0xFFCBD5E1),
+                                          style: TextStyle(
+                                            color: context.textPrimary,
                                             fontSize: 12,
                                             fontWeight: FontWeight.w600,
                                           ),
@@ -356,31 +345,43 @@ class _InboundOrdersListScreenState extends State<InboundOrdersListScreen> {
                                         const SizedBox(height: 2),
                                         Text(
                                           'Depositante: ${order.customerName}',
-                                          style: const TextStyle(
-                                            color: Color(0xFF94A3B8),
+                                          style: TextStyle(
+                                            color: context.textSecondary,
                                             fontSize: 11,
                                           ),
                                         ),
-                                        const Divider(
-                                          color: Color(0xFF334155),
+                                        Divider(
+                                          color: context.border,
                                           height: 16,
                                         ),
-                                        const Row(
+                                        Row(
                                           mainAxisAlignment:
-                                              MainAxisAlignment.center,
+                                              MainAxisAlignment.spaceBetween,
                                           children: [
                                             Text(
-                                              'Conferir Itens',
+                                              'Chave: ...${order.accessKey.length >= 8 ? order.accessKey.substring(order.accessKey.length - 8) : ""}',
                                               style: TextStyle(
-                                                color: Color(0xFF34D399),
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.bold,
+                                                color: context.textMuted,
+                                                fontFamily: 'monospace',
+                                                fontSize: 10,
                                               ),
                                             ),
-                                            Icon(
-                                              Icons.chevron_right,
-                                              color: Color(0xFF34D399),
-                                              size: 16,
+                                            const Row(
+                                              children: [
+                                                Text(
+                                                  'Conferir Itens',
+                                                  style: TextStyle(
+                                                    color: Color(0xFF34D399),
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                Icon(
+                                                  LucideIcons.chevron_right,
+                                                  color: Color(0xFF34D399),
+                                                  size: 16,
+                                                ),
+                                              ],
                                             ),
                                           ],
                                         ),

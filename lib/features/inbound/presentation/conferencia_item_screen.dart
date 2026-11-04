@@ -11,6 +11,7 @@ import '../../printing/presentation/printing_provider.dart';
 import '../../printing/presentation/widgets/print_label_dialog.dart';
 import '../../quality/data/quality_models.dart';
 import '../../quality/presentation/quality_provider.dart';
+import '../../../core/theme/app_theme.dart';
 import '../data/inbound_models.dart';
 import '../data/inbound_repository.dart';
 import 'inbound_provider.dart';
@@ -84,12 +85,11 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
 
   String? _selectedPackId;
   String? _selectedBillingServiceId;
-  int _selectedQualityStatus = 1; // 1 = Liberado
+  int _selectedQualityStatus = 1;
   String? _selectedReasonId;
   DateTime? _mfgDate;
   DateTime? _expDate;
 
-  // Regras de Rastreabilidade do Produto
   ProductTraceabilityRules _rules = ProductTraceabilityRules();
   bool _isLoadingRules = true;
 
@@ -118,7 +118,6 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
 
     final productId = widget.itemData['productId']?.toString();
     if (productId != null && productId.isNotEmpty) {
-      // Busca regras do produto diretamente do repositório
       final repository = InboundRepository(
         context.read<InboundProvider>().repositoryApi,
       );
@@ -129,7 +128,6 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
           _rules = rules;
           _isLoadingRules = false;
 
-          // Pré-preenchimento condicional: somente se o produto controlar a respectiva flag
           if (_rules.tracksBatch && widget.itemData['expectedBatch'] != null) {
             _batchController.text = widget.itemData['expectedBatch'];
           }
@@ -186,17 +184,6 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
       initialDate: initial,
       firstDate: DateTime(2000),
       lastDate: DateTime(2040),
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.dark().copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: Color(0xFF10B981),
-              surface: Color(0xFF1E293B),
-            ),
-          ),
-          child: child!,
-        );
-      },
     );
 
     if (picked != null && mounted) {
@@ -241,14 +228,13 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
         title: const Text(
           'Pausar Conferência?',
-          style: TextStyle(color: Colors.white, fontSize: 16),
+          style: TextStyle(fontSize: 16),
         ),
-        content: const Text(
+        content: Text(
           'O item será liberado na Doca para que outro operador possa continuar se necessário.',
-          style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+          style: TextStyle(color: context.textSecondary, fontSize: 13),
         ),
         actions: [
           TextButton(
@@ -318,9 +304,6 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
       return;
     }
 
-    // ==============================================================
-    // VALIDAÇÕES ESTREITAS DE RASTREABILIDADE CONFORME REGRAS DO PRODUTO
-    // ==============================================================
     final batchVal = _batchController.text.trim();
     if (_rules.tracksBatch && _rules.strictBatch && batchVal.isEmpty) {
       HapticFeedback.heavyImpact();
@@ -381,7 +364,6 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
       return;
     }
 
-    // Regra Fiscal do Backend: Lote físico divergente da NF-e não pode entrar como Liberado
     final expectedBatch = widget.itemData['expectedBatch']?.toString().trim();
     if (_rules.tracksBatch &&
         expectedBatch != null &&
@@ -394,7 +376,7 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
         SnackBar(
           backgroundColor: const Color(0xFFEF4444),
           content: Text(
-            'Divergência Fiscal: Lote "$batchVal" difere da NF-e ("$expectedBatch"). Selecione um status de ocorrência/qualidade.',
+            'Divergência Fiscal: Lote "$batchVal" difere da NF-e ("$expectedBatch"). Selecione um status de ocorrência.',
           ),
         ),
       );
@@ -414,8 +396,8 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
     final pack = widget.packagings.firstWhere(
       (p) => p.packagingTypeId == _selectedPackId,
     );
-
     final inboundProvider = context.read<InboundProvider>();
+
     String serviceName = 'Serviço Isento';
     if (_selectedBillingServiceId != 'exempt') {
       final srv = inboundProvider.billingServices.firstWhere(
@@ -487,7 +469,6 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
     if (_cart.isEmpty) return;
 
     final inboundProvider = context.read<InboundProvider>();
-
     final payloadVolumes = _cart
         .map(
           (v) => {
@@ -537,9 +518,9 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
         summaryWidget: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFF0F172A),
+            color: context.cardSubtle,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFF334155)),
+            border: Border.all(color: context.border),
           ),
           child: Column(
             children: [
@@ -554,7 +535,7 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
               const SizedBox(height: 4),
               Text(
                 '${widget.itemData['sku']} • Doca: ${widget.itemData['dockLocationPath']}',
-                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                style: TextStyle(color: context.textSecondary, fontSize: 11),
               ),
             ],
           ),
@@ -589,28 +570,28 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
     String label;
     switch (status) {
       case 1:
-        bg = const Color(0xFF065F46).withValues(alpha: 0.3);
-        text = const Color(0xFF34D399);
+        bg = const Color(0xFF065F46).withValues(alpha: 0.15);
+        text = const Color(0xFF10B981);
         label = 'Liberado';
         break;
       case 2:
-        bg = const Color(0xFF78350F).withValues(alpha: 0.3);
-        text = const Color(0xFFFBBF24);
+        bg = const Color(0xFF78350F).withValues(alpha: 0.15);
+        text = const Color(0xFFF59E0B);
         label = 'Quarentena';
         break;
       case 3:
-        bg = const Color(0xFF7F1D1D).withValues(alpha: 0.3);
-        text = const Color(0xFFF87171);
+        bg = const Color(0xFF7F1D1D).withValues(alpha: 0.15);
+        text = const Color(0xFFEF4444);
         label = 'Avaria Física';
         break;
       case 4:
-        bg = const Color(0xFF581C87).withValues(alpha: 0.3);
+        bg = const Color(0xFF581C87).withValues(alpha: 0.15);
         text = const Color(0xFFC084FC);
         label = 'Falta Física';
         break;
       default:
-        bg = const Color(0xFF334155);
-        text = const Color(0xFF94A3B8);
+        bg = context.cardSubtle;
+        text = context.textSecondary;
         label = 'Indefinido';
     }
     return Container(
@@ -648,12 +629,7 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
 
     if (_checkoutResult != null) {
       return Scaffold(
-        backgroundColor: const Color(0xFF0F172A),
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF1E293B),
-          title: const Text('Recebimento na Doca'),
-          elevation: 0,
-        ),
+        appBar: AppBar(title: const Text('Recebimento na Doca')),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -661,15 +637,15 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Icon(
-                  Icons.check_circle_rounded,
+                  LucideIcons.circle_check,
                   size: 64,
                   color: Color(0xFF10B981),
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'Checkout Gravado na Doca!',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: context.textPrimary,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -678,10 +654,7 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                 Text(
                   '${_checkoutResult!.length} HUs geradas na Doca ${widget.itemData['dockLocationPath']}.\nUtilize o menu de Guarda para armazená-las nos porta-paletes.',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Color(0xFF94A3B8),
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: context.textSecondary, fontSize: 12),
                 ),
                 const SizedBox(height: 24),
                 SizedBox(
@@ -713,15 +686,15 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                   child: OutlinedButton(
                     onPressed: () => Navigator.of(context).pop(),
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFF475569)),
+                      side: BorderSide(color: context.border),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    child: const Text(
+                    child: Text(
                       'CONCLUIR E VOLTAR',
                       style: TextStyle(
-                        color: Color(0xFF94A3B8),
+                        color: context.textSecondary,
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
                       ),
@@ -736,18 +709,15 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
         title: Text(
           widget.itemData['sku'] ?? 'Conferência de Item',
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
         ),
-        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(
-              Icons.pause_circle_outline_rounded,
+              LucideIcons.circle_pause,
               color: Color(0xFFFBBF24),
             ),
             tooltip: 'Pausar e Liberar Item',
@@ -757,10 +727,13 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
       ),
       body: Column(
         children: [
-          // Resumo Superior do Item
+          // Resumo do Item
           Container(
             padding: const EdgeInsets.all(12),
-            color: const Color(0xFF1E293B),
+            decoration: BoxDecoration(
+              color: context.card,
+              border: Border(bottom: BorderSide(color: context.border)),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -772,9 +745,10 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                         widget.itemData['description'] ?? '',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFFCBD5E1),
+                        style: TextStyle(
+                          color: context.textPrimary,
                           fontSize: 12,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -784,13 +758,13 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF059669).withValues(alpha: 0.2),
+                        color: const Color(0xFF059669).withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         'Doca: ${widget.itemData['dockLocationPath']}',
                         style: const TextStyle(
-                          color: Color(0xFF34D399),
+                          color: Color(0xFF059669),
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                         ),
@@ -805,7 +779,7 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                     _buildMetric(
                       'Esperado',
                       '${expected.toStringAsFixed(0)} $unit',
-                      Colors.white,
+                      context.textPrimary,
                     ),
                     _buildMetric(
                       'Já Recebido',
@@ -815,7 +789,7 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                     _buildMetric(
                       'No Carrinho',
                       '${inCart.toStringAsFixed(0)} $unit',
-                      const Color(0xFF38BDF8),
+                      const Color(0xFF2563EB),
                     ),
                   ],
                 ),
@@ -823,7 +797,7 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
             ),
           ),
 
-          // Formulário com scroll
+          // Formulário
           Expanded(
             child: SingleChildScrollView(
               controller: _scrollController,
@@ -833,24 +807,16 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // 1. SERVIÇO DE COBRANÇA OBRIGATÓRIO
                     DropdownButtonFormField<String>(
                       initialValue: _selectedBillingServiceId,
                       isExpanded: true,
-                      dropdownColor: const Color(0xFF1E293B),
-                      style: const TextStyle(color: Colors.white, fontSize: 13),
-                      decoration: InputDecoration(
+                      dropdownColor: context.card,
+                      style: TextStyle(
+                        color: context.textPrimary,
+                        fontSize: 13,
+                      ),
+                      decoration: const InputDecoration(
                         labelText: 'Serviço Operacional de Recebimento *',
-                        labelStyle: const TextStyle(
-                          color: Color(0xFF94A3B8),
-                          fontSize: 12,
-                        ),
-                        filled: true,
-                        fillColor: const Color(0xFF1E293B),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide.none,
-                        ),
                       ),
                       items: [
                         ...inboundProvider.billingServices.map(
@@ -862,20 +828,20 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                             ),
                           ),
                         ),
-                        const DropdownMenuItem(
+                        DropdownMenuItem(
                           value: 'exempt',
                           child: Row(
                             children: [
                               Icon(
-                                Icons.money_off_csred_rounded,
+                                LucideIcons.badge_dollar_sign,
                                 size: 16,
-                                color: Color(0xFF94A3B8),
+                                color: context.textSecondary,
                               ),
-                              SizedBox(width: 8),
+                              const SizedBox(width: 8),
                               Text(
                                 'Serviço isento (Sem tarifa)',
                                 style: TextStyle(
-                                  color: Color(0xFF94A3B8),
+                                  color: context.textSecondary,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -891,31 +857,19 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    // 2. EMBALAGEM E QUANTIDADES
                     DropdownButtonFormField<String>(
                       initialValue: _selectedPackId,
                       isExpanded: true,
-                      dropdownColor: const Color(0xFF1E293B),
-                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                      dropdownColor: context.card,
+                      style: TextStyle(
+                        color: context.textPrimary,
+                        fontSize: 13,
+                      ),
                       decoration: InputDecoration(
                         labelText: 'Embalagem do Volume *',
-                        labelStyle: const TextStyle(
-                          color: Color(0xFF94A3B8),
-                          fontSize: 12,
-                        ),
                         hintText: widget.packagings.length > 1
                             ? 'Selecione a embalagem do lote...'
                             : null,
-                        hintStyle: const TextStyle(
-                          color: Color(0xFF64748B),
-                          fontSize: 12,
-                        ),
-                        filled: true,
-                        fillColor: const Color(0xFF1E293B),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide.none,
-                        ),
                       ),
                       items: widget.packagings
                           .map(
@@ -941,38 +895,23 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                             controller: _volCountController,
                             keyboardType: TextInputType.number,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: context.textPrimary,
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                               fontFamily: 'monospace',
                             ),
-                            decoration: InputDecoration(
+                            decoration: const InputDecoration(
                               labelText: 'Qtd Volumes (HU)',
-                              labelStyle: const TextStyle(
-                                color: Color(0xFF94A3B8),
-                                fontSize: 11,
-                              ),
-                              filled: true,
-                              fillColor: const Color(0xFF0F172A),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: const BorderSide(
-                                  color: Color(0xFF3B82F6),
-                                ),
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
                             ),
                           ),
                         ),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 8),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
                           child: Text(
                             'X',
                             style: TextStyle(
-                              color: Color(0xFF64748B),
+                              color: context.textMuted,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -984,24 +923,14 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                               decimal: true,
                             ),
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: context.textPrimary,
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                               fontFamily: 'monospace',
                             ),
-                            decoration: InputDecoration(
+                            decoration: const InputDecoration(
                               labelText: 'Peças por Volume',
-                              labelStyle: const TextStyle(
-                                color: Color(0xFF94A3B8),
-                                fontSize: 11,
-                              ),
-                              filled: true,
-                              fillColor: const Color(0xFF1E293B),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: BorderSide.none,
-                              ),
                             ),
                           ),
                         ),
@@ -1009,9 +938,7 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                     ),
                     const SizedBox(height: 14),
 
-                    // ==============================================================
-                    // 3. RASTREABILIDADE DINÂMICA BASEADA NAS REGRAS DO PRODUTO
-                    // ==============================================================
+                    // Rastreabilidade Dinâmica
                     if (_isLoadingRules) ...[
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 8),
@@ -1030,9 +957,9 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1E293B).withValues(alpha: 0.6),
+                          color: context.cardSubtle,
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFF334155)),
+                          border: Border.all(color: context.border),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1040,19 +967,18 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                             const Text(
                               'Rastreabilidade Exigida pelo Produto',
                               style: TextStyle(
-                                color: Color(0xFF38BDF8),
+                                color: Color(0xFF2563EB),
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                             const SizedBox(height: 10),
 
-                            // CAMPO LOTE FÍSICO
                             if (_rules.tracksBatch) ...[
                               TextFormField(
                                 controller: _batchController,
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: context.textPrimary,
                                   fontSize: 13,
                                   fontFamily: 'monospace',
                                 ),
@@ -1062,25 +988,18 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                                       : 'Lote Físico (Opcional)',
                                   labelStyle: TextStyle(
                                     color: _rules.strictBatch
-                                        ? const Color(0xFFFCA5A5)
-                                        : const Color(0xFF94A3B8),
+                                        ? const Color(0xFFEF4444)
+                                        : context.textSecondary,
                                     fontSize: 12,
                                     fontWeight: _rules.strictBatch
                                         ? FontWeight.bold
                                         : FontWeight.normal,
-                                  ),
-                                  filled: true,
-                                  fillColor: const Color(0xFF0F172A),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: BorderSide.none,
                                   ),
                                 ),
                               ),
                               const SizedBox(height: 10),
                             ],
 
-                            // DATAS: VALIDADE E FABRICAÇÃO
                             if (_rules.tracksExpiration ||
                                 _rules.tracksManufacture) ...[
                               Row(
@@ -1127,12 +1046,11 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                               const SizedBox(height: 10),
                             ],
 
-                            // NÚMERO DE SÉRIE
                             if (_rules.tracksSerial) ...[
                               TextFormField(
                                 controller: _serialController,
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: context.textPrimary,
                                   fontSize: 13,
                                   fontFamily: 'monospace',
                                 ),
@@ -1142,18 +1060,12 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                                       : 'Número de Série (Opcional)',
                                   labelStyle: TextStyle(
                                     color: _rules.strictSerial
-                                        ? const Color(0xFFFCA5A5)
-                                        : const Color(0xFF94A3B8),
+                                        ? const Color(0xFFEF4444)
+                                        : context.textSecondary,
                                     fontSize: 12,
                                     fontWeight: _rules.strictSerial
                                         ? FontWeight.bold
                                         : FontWeight.normal,
-                                  ),
-                                  filled: true,
-                                  fillColor: const Color(0xFF0F172A),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: BorderSide.none,
                                   ),
                                 ),
                               ),
@@ -1164,11 +1076,11 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                       const SizedBox(height: 14),
                     ],
 
-                    // 4. QUALIDADE E AVARIAS INLINE
-                    const Text(
+                    // Qualidade Inline
+                    Text(
                       'Condição / Qualidade da Carga',
                       style: TextStyle(
-                        color: Color(0xFF94A3B8),
+                        color: context.textSecondary,
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                       ),
@@ -1177,17 +1089,17 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                     DropdownButtonFormField<int>(
                       initialValue: _selectedQualityStatus,
                       isExpanded: true,
-                      dropdownColor: const Color(0xFF1E293B),
-                      style: const TextStyle(
-                        color: Colors.white,
+                      dropdownColor: context.card,
+                      style: TextStyle(
+                        color: context.textPrimary,
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
                       ),
                       decoration: InputDecoration(
                         filled: true,
                         fillColor: _selectedQualityStatus == 1
-                            ? const Color(0xFF1E293B)
-                            : const Color(0xFF450A0A),
+                            ? context.cardSubtle
+                            : const Color(0xFFEF4444).withValues(alpha: 0.1),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                           borderSide: _selectedQualityStatus != 1
@@ -1234,9 +1146,13 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF450A0A).withValues(alpha: 0.4),
+                          color: const Color(0xFFEF4444)
+                              .withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFF991B1B)),
+                          border: Border.all(
+                            color: const Color(0xFFEF4444)
+                                .withValues(alpha: 0.3),
+                          ),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1244,23 +1160,13 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                             DropdownButtonFormField<String>(
                               initialValue: _selectedReasonId,
                               isExpanded: true,
-                              dropdownColor: const Color(0xFF1E293B),
-                              style: const TextStyle(
-                                color: Colors.white,
+                              dropdownColor: context.card,
+                              style: TextStyle(
+                                color: context.textPrimary,
                                 fontSize: 13,
                               ),
-                              decoration: InputDecoration(
+                              decoration: const InputDecoration(
                                 labelText: 'Motivo da Ocorrência *',
-                                labelStyle: const TextStyle(
-                                  color: Color(0xFFFCA5A5),
-                                  fontSize: 12,
-                                ),
-                                filled: true,
-                                fillColor: const Color(0xFF0F172A),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide.none,
-                                ),
                               ),
                               items: qualityProvider.reasons
                                   .map(
@@ -1280,22 +1186,12 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                             const SizedBox(height: 10),
                             TextFormField(
                               controller: _notesController,
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: context.textPrimary,
                                 fontSize: 13,
                               ),
-                              decoration: InputDecoration(
+                              decoration: const InputDecoration(
                                 labelText: 'Descrição detalhada do problema *',
-                                labelStyle: const TextStyle(
-                                  color: Color(0xFFFCA5A5),
-                                  fontSize: 12,
-                                ),
-                                filled: true,
-                                fillColor: const Color(0xFF0F172A),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide.none,
-                                ),
                               ),
                             ),
                             const SizedBox(height: 10),
@@ -1305,7 +1201,7 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                                 Text(
                                   'Fotos (${_attachments.length})',
                                   style: const TextStyle(
-                                    color: Color(0xFFFCA5A5),
+                                    color: Color(0xFFEF4444),
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -1314,8 +1210,8 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                                   children: [
                                     IconButton(
                                       icon: const Icon(
-                                        Icons.camera_alt,
-                                        color: Color(0xFFFCA5A5),
+                                        LucideIcons.camera,
+                                        color: Color(0xFFEF4444),
                                         size: 18,
                                       ),
                                       onPressed: () =>
@@ -1323,8 +1219,8 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                                     ),
                                     IconButton(
                                       icon: const Icon(
-                                        Icons.photo_library,
-                                        color: Color(0xFFFCA5A5),
+                                        LucideIcons.image,
+                                        color: Color(0xFFEF4444),
                                         size: 18,
                                       ),
                                       onPressed: () =>
@@ -1370,7 +1266,7 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                                                 shape: BoxShape.circle,
                                               ),
                                               child: const Icon(
-                                                Icons.close,
+                                                LucideIcons.x,
                                                 color: Colors.white,
                                                 size: 12,
                                               ),
@@ -1399,7 +1295,7 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                           ),
                         ),
                         icon: const Icon(
-                          Icons.add_shopping_cart_rounded,
+                          LucideIcons.shopping_cart,
                           color: Colors.white,
                         ),
                         label: const Text(
@@ -1414,17 +1310,17 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                     ),
 
                     const SizedBox(height: 24),
-                    const Divider(color: Color(0xFF334155), height: 1),
+                    Divider(color: context.border, height: 1),
                     const SizedBox(height: 16),
 
-                    // 5. MATERIALIZAÇÃO DO CARRINHO DE LOTES
+                    // Materialização do Carrinho
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Row(
                           children: [
                             Icon(
-                              Icons.shopping_cart_rounded,
+                              LucideIcons.shopping_cart,
                               color: Color(0xFF10B981),
                               size: 18,
                             ),
@@ -1432,7 +1328,6 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                             Text(
                               'Carrinho de Lotes',
                               style: TextStyle(
-                                color: Colors.white,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
                               ),
@@ -1445,14 +1340,14 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF0F172A),
+                            color: context.cardSubtle,
                             borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: const Color(0xFF334155)),
+                            border: Border.all(color: context.border),
                           ),
                           child: Text(
                             '${_cart.length} lote(s)',
                             style: const TextStyle(
-                              color: Color(0xFF38BDF8),
+                              color: Color(0xFF2563EB),
                               fontWeight: FontWeight.bold,
                               fontSize: 11,
                               fontFamily: 'monospace',
@@ -1467,31 +1362,31 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1E293B).withValues(alpha: 0.5),
+                          color: context.cardSubtle,
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFF334155)),
+                          border: Border.all(color: context.border),
                         ),
-                        child: const Center(
+                        child: Center(
                           child: Column(
                             children: [
                               Icon(
-                                Icons.inbox_outlined,
-                                color: Color(0xFF64748B),
+                                LucideIcons.inbox,
+                                color: context.textMuted,
                                 size: 36,
                               ),
-                              SizedBox(height: 8),
+                              const SizedBox(height: 8),
                               Text(
                                 'Nenhum lote adicionado ao carrinho.',
                                 style: TextStyle(
-                                  color: Color(0xFF94A3B8),
+                                  color: context.textSecondary,
                                   fontSize: 12,
                                 ),
                               ),
-                              SizedBox(height: 2),
+                              const SizedBox(height: 2),
                               Text(
                                 'Preencha os campos e clique em "Adicionar Lote".',
                                 style: TextStyle(
-                                  color: Color(0xFF64748B),
+                                  color: context.textMuted,
                                   fontSize: 11,
                                 ),
                               ),
@@ -1510,11 +1405,9 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                           return Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1E293B),
+                              color: context.card,
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: const Color(0xFF334155),
-                              ),
+                              border: Border.all(color: context.border),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1532,7 +1425,7 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                                           ),
                                           decoration: BoxDecoration(
                                             color: const Color(0xFF2563EB)
-                                                .withValues(alpha: 0.2),
+                                                .withValues(alpha: 0.15),
                                             borderRadius: BorderRadius.circular(
                                               4,
                                             ),
@@ -1540,7 +1433,7 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                                           child: Text(
                                             item.packagingCode,
                                             style: const TextStyle(
-                                              color: Color(0xFF60A5FA),
+                                              color: Color(0xFF2563EB),
                                               fontWeight: FontWeight.bold,
                                               fontSize: 11,
                                               fontFamily: 'monospace',
@@ -1550,8 +1443,8 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                                         const SizedBox(width: 8),
                                         Text(
                                           '${item.volumeCount} Vol x ${item.quantityPerVolume.toStringAsFixed(0)} = ${item.totalQuantity.toStringAsFixed(0)} $unit',
-                                          style: const TextStyle(
-                                            color: Colors.white,
+                                          style: TextStyle(
+                                            color: context.textPrimary,
                                             fontWeight: FontWeight.bold,
                                             fontSize: 13,
                                           ),
@@ -1560,9 +1453,9 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                                     ),
                                     IconButton(
                                       icon: const Icon(
-                                        Icons.delete_outline_rounded,
-                                        color: Color(0xFFF87171),
-                                        size: 20,
+                                        LucideIcons.trash,
+                                        color: Color(0xFFEF4444),
+                                        size: 18,
                                       ),
                                       tooltip: 'Excluir Lote',
                                       padding: EdgeInsets.zero,
@@ -1575,8 +1468,8 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                                 const SizedBox(height: 6),
                                 Text(
                                   'Serviço: ${item.billingServiceName}',
-                                  style: const TextStyle(
-                                    color: Color(0xFF94A3B8),
+                                  style: TextStyle(
+                                    color: context.textSecondary,
                                     fontSize: 11,
                                   ),
                                 ),
@@ -1587,8 +1480,8 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                                   children: [
                                     Text(
                                       'Lote: ${item.batch ?? "Sem Lote"}',
-                                      style: const TextStyle(
-                                        color: Color(0xFFCBD5E1),
+                                      style: TextStyle(
+                                        color: context.textPrimary,
                                         fontFamily: 'monospace',
                                         fontSize: 11,
                                       ),
@@ -1596,8 +1489,8 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                                     if (item.expirationDate != null)
                                       Text(
                                         'Val: ${_formatDate(item.expirationDate)}',
-                                        style: const TextStyle(
-                                          color: Color(0xFFCBD5E1),
+                                        style: TextStyle(
+                                          color: context.textSecondary,
                                           fontFamily: 'monospace',
                                           fontSize: 11,
                                         ),
@@ -1610,15 +1503,15 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                                   Row(
                                     children: [
                                       const Icon(
-                                        Icons.camera_alt_outlined,
+                                        LucideIcons.camera,
                                         size: 13,
-                                        color: Color(0xFF38BDF8),
+                                        color: Color(0xFF2563EB),
                                       ),
                                       const SizedBox(width: 4),
                                       Text(
                                         '${item.images.length} evidência(s) anexada(s)',
                                         style: const TextStyle(
-                                          color: Color(0xFF38BDF8),
+                                          color: Color(0xFF2563EB),
                                           fontSize: 10,
                                         ),
                                       ),
@@ -1638,11 +1531,13 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
         ],
       ),
 
-      // RODAPÉ DO CARRINHO COM CHECKOUT
       bottomNavigationBar: _cart.isNotEmpty
           ? Container(
               padding: const EdgeInsets.all(14),
-              color: const Color(0xFF1E293B),
+              decoration: BoxDecoration(
+                color: context.card,
+                border: Border(top: BorderSide(color: context.border)),
+              ),
               child: SafeArea(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -1652,8 +1547,8 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                       children: [
                         Text(
                           '${_cart.length} lote(s) pronto(s)',
-                          style: const TextStyle(
-                            color: Color(0xFF94A3B8),
+                          style: TextStyle(
+                            color: context.textSecondary,
                             fontSize: 12,
                           ),
                         ),
@@ -1721,12 +1616,12 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: const Color(0xFF0F172A),
+          color: context.cardSubtle,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isStrict && date == null
                 ? const Color(0xFFEF4444)
-                : const Color(0xFF334155),
+                : context.border,
           ),
         ),
         child: Column(
@@ -1739,8 +1634,8 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                   title + (isStrict ? ' *' : ''),
                   style: TextStyle(
                     color: isStrict
-                        ? const Color(0xFFFCA5A5)
-                        : const Color(0xFF94A3B8),
+                        ? const Color(0xFFEF4444)
+                        : context.textSecondary,
                     fontSize: 10,
                     fontWeight: isStrict ? FontWeight.bold : FontWeight.normal,
                   ),
@@ -1748,10 +1643,10 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                 if (date != null && onClear != null)
                   GestureDetector(
                     onTap: onClear,
-                    child: const Icon(
-                      Icons.close,
+                    child: Icon(
+                      LucideIcons.x,
                       size: 12,
-                      color: Color(0xFF64748B),
+                      color: context.textMuted,
                     ),
                   ),
               ],
@@ -1760,19 +1655,19 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
             Row(
               children: [
                 Icon(
-                  Icons.calendar_today_rounded,
+                  LucideIcons.calendar,
                   size: 12,
                   color: date != null
                       ? const Color(0xFF10B981)
-                      : const Color(0xFF64748B),
+                      : context.textMuted,
                 ),
                 const SizedBox(width: 6),
                 Text(
                   date != null ? _formatDate(date) : 'Selecionar...',
                   style: TextStyle(
                     color: date != null
-                        ? Colors.white
-                        : const Color(0xFF64748B),
+                        ? context.textPrimary
+                        : context.textMuted,
                     fontFamily: 'monospace',
                     fontSize: 12,
                     fontWeight: date != null
@@ -1793,8 +1688,8 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: Color(0xFF64748B),
+          style: TextStyle(
+            color: context.textMuted,
             fontSize: 10,
             fontWeight: FontWeight.bold,
           ),

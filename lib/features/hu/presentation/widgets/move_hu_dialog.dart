@@ -1,12 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/scanner/qr_scanner_dialog.dart';
 import '../../../../core/scanner/scanner_service.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../data/hu_models.dart';
 import '../hu_provider.dart';
 
@@ -90,7 +91,7 @@ class _MoveHuDialogState extends State<MoveHuDialog> {
         setState(() {
           _resolvedDestination = null;
           _isResolvingLocation = false;
-          _localError = 'A HU já está nesta posição.';
+          _localError = 'A HU já se encontra nesta posição.';
         });
         HapticFeedback.vibrate();
         return;
@@ -134,9 +135,10 @@ class _MoveHuDialogState extends State<MoveHuDialog> {
   @override
   Widget build(BuildContext context) {
     final huProvider = context.watch<HuProvider>();
+    final isDark = context.isDark;
 
     return Dialog(
-      backgroundColor: const Color(0xFF1E293B),
+      backgroundColor: context.card,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       insetPadding: const EdgeInsets.all(16),
       child: SingleChildScrollView(
@@ -145,29 +147,31 @@ class _MoveHuDialogState extends State<MoveHuDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Cabeçalho
             Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF06B6D4).withValues(alpha: 0.15),
+                    color: const Color(0xFF06B6D4)
+                        .withValues(alpha: isDark ? 0.2 : 0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(
-                    Icons.drive_file_move_outline,
+                    LucideIcons.corner_up_right,
                     color: Color(0xFF06B6D4),
                     size: 24,
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Mover HU',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: context.textPrimary,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -175,7 +179,7 @@ class _MoveHuDialogState extends State<MoveHuDialog> {
                       Text(
                         'Transferência física de endereço',
                         style: TextStyle(
-                          color: Color(0xFF94A3B8),
+                          color: context.textSecondary,
                           fontSize: 12,
                         ),
                       ),
@@ -186,35 +190,36 @@ class _MoveHuDialogState extends State<MoveHuDialog> {
             ),
             const SizedBox(height: 16),
 
+            // Card Informativo de Posição Atual e Destino
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFF0F172A),
+                color: context.cardSubtle,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF334155)),
+                border: Border.all(color: context.border),
               ),
               child: Column(
                 children: [
                   Row(
                     children: [
                       const Icon(
-                        Icons.location_on,
+                        LucideIcons.map_pin,
                         color: Color(0xFFEF4444),
                         size: 18,
                       ),
                       const SizedBox(width: 8),
-                      const Text(
+                      Text(
                         'Posição Atual:',
                         style: TextStyle(
-                          color: Color(0xFF94A3B8),
+                          color: context.textSecondary,
                           fontSize: 12,
                         ),
                       ),
                       const Spacer(),
                       Text(
                         widget.hu.currentLocationPath,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: context.textPrimary,
                           fontWeight: FontWeight.bold,
                           fontFamily: 'monospace',
                           fontSize: 13,
@@ -222,19 +227,19 @@ class _MoveHuDialogState extends State<MoveHuDialog> {
                       ),
                     ],
                   ),
-                  const Divider(color: Color(0xFF334155), height: 20),
+                  Divider(color: context.border, height: 20),
                   Row(
                     children: [
                       const Icon(
-                        Icons.near_me_rounded,
+                        LucideIcons.navigation,
                         color: Color(0xFF10B981),
                         size: 18,
                       ),
                       const SizedBox(width: 8),
-                      const Text(
+                      Text(
                         'Novo Endereço:',
                         style: TextStyle(
-                          color: Color(0xFF94A3B8),
+                          color: context.textSecondary,
                           fontSize: 12,
                         ),
                       ),
@@ -246,7 +251,7 @@ class _MoveHuDialogState extends State<MoveHuDialog> {
                         style: TextStyle(
                           color: _resolvedDestination != null
                               ? const Color(0xFF10B981)
-                              : const Color(0xFF64748B),
+                              : context.textMuted,
                           fontWeight: FontWeight.bold,
                           fontFamily: 'monospace',
                           fontSize: 13,
@@ -259,30 +264,54 @@ class _MoveHuDialogState extends State<MoveHuDialog> {
             ),
             const SizedBox(height: 16),
 
+            // Alerta de Erro
             if (_localError != null || huProvider.errorMessage != null) ...[
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF450A0A),
+                  color: isDark
+                      ? const Color(0xFF450A0A)
+                      : const Color(0xFFFFF1F2),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFF991B1B)),
-                ),
-                child: Text(
-                  _localError ?? huProvider.errorMessage ?? '',
-                  style: const TextStyle(
-                    color: Color(0xFFFCA5A5),
-                    fontSize: 12,
+                  border: Border.all(
+                    color: isDark
+                        ? const Color(0xFF991B1B)
+                        : const Color(0xFFFECDD3),
                   ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      LucideIcons.circle_alert,
+                      size: 16,
+                      color: isDark
+                          ? const Color(0xFFFCA5A5)
+                          : const Color(0xFFE11D48),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _localError ?? huProvider.errorMessage ?? '',
+                        style: TextStyle(
+                          color: isDark
+                              ? const Color(0xFFFCA5A5)
+                              : const Color(0xFFBE123C),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 12),
             ],
 
+            // Input do Endereço de Destino
             TextFormField(
               controller: _locationController,
               focusNode: _focusNode,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: context.textPrimary,
                 fontFamily: 'monospace',
                 fontSize: 14,
               ),
@@ -290,24 +319,26 @@ class _MoveHuDialogState extends State<MoveHuDialog> {
               onFieldSubmitted: _resolveLocation,
               decoration: InputDecoration(
                 labelText: 'Bipe ou digite o Endereço (ex: P1C1BB02)',
-                labelStyle: const TextStyle(
-                  color: Color(0xFF94A3B8),
+                labelStyle: TextStyle(
+                  color: context.textSecondary,
                   fontSize: 12,
                 ),
                 prefixIcon: const Icon(
-                  LucideIcons.scan_barcode,
+                  LucideIcons.scan,
                   color: Color(0xFF06B6D4),
                 ),
                 suffixIcon: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: const Icon(
-                        Icons.photo_camera_rounded,
-                        color: Color(0xFF60A5FA),
-                        size: 20,
+                      icon: Icon(
+                        LucideIcons.camera,
+                        color: isDark
+                            ? const Color(0xFF60A5FA)
+                            : const Color(0xFF2563EB),
+                        size: 18,
                       ),
-                      tooltip: 'Escanear via Câmera',
+                      tooltip: 'Escanear via Câmara',
                       onPressed: _openCameraScanner,
                     ),
                     if (_isResolvingLocation)
@@ -325,8 +356,9 @@ class _MoveHuDialogState extends State<MoveHuDialog> {
                     else
                       IconButton(
                         icon: const Icon(
-                          Icons.arrow_forward_rounded,
+                          LucideIcons.arrow_right,
                           color: Color(0xFF06B6D4),
+                          size: 18,
                         ),
                         onPressed: () =>
                             _resolveLocation(_locationController.text),
@@ -334,15 +366,20 @@ class _MoveHuDialogState extends State<MoveHuDialog> {
                   ],
                 ),
                 filled: true,
-                fillColor: const Color(0xFF0F172A),
+                fillColor: context.cardSubtle,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide.none,
+                  borderSide: BorderSide(color: context.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: context.border),
                 ),
               ),
             ),
             const SizedBox(height: 20),
 
+            // Ações do Modal
             Row(
               children: [
                 Expanded(
@@ -352,15 +389,15 @@ class _MoveHuDialogState extends State<MoveHuDialog> {
                         : () => Navigator.of(context).pop(false),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      side: const BorderSide(color: Color(0xFF475569)),
+                      side: BorderSide(color: context.border),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    child: const Text(
+                    child: Text(
                       'CANCELAR',
                       style: TextStyle(
-                        color: Color(0xFF94A3B8),
+                        color: context.textSecondary,
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
                       ),
@@ -377,6 +414,7 @@ class _MoveHuDialogState extends State<MoveHuDialog> {
                         : _confirmTransfer,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF06B6D4),
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
