@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -694,7 +695,7 @@ class _ConferenciaItemScreenState extends State<ConferenciaItemScreen> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    icon: const Icon(Icons.print_rounded, color: Colors.white),
+                    icon: const Icon(LucideIcons.printer, color: Colors.white),
                     label: const Text(
                       'IMPRIMIR ETIQUETAS DAS HUs',
                       style: TextStyle(

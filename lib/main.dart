@@ -24,7 +24,11 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final storage = StorageService();
-  final api = ApiClient(storage);
+
+  // Lê a URL configurada pelo cliente (ou fallback para ampla)
+  final initialBaseUrl = await storage.getBaseUrl();
+  final api = ApiClient(storage, initialBaseUrl: initialBaseUrl);
+
   final authRepository = AuthRepository(api, storage);
   final scannerService = ScannerService()..initialize();
   final huRepository = HuRepository(api);
@@ -34,12 +38,10 @@ void main() async {
 
   final authProvider = AuthProvider(authRepository, storage);
 
-  // 1. Quando o refresh falhar no ApiClient, desloga e envia para o Login
   api.onSessionExpired = (reason) {
     authProvider.forceLogout(reason: reason);
   };
 
-  // 2. Quando o AuthProvider forçar logout, fecha todas as rotas filhas abertas
   authProvider.onForceLogout = () {
     navigatorKey.currentState?.popUntil((route) => route.isFirst);
   };
@@ -47,6 +49,8 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
+        Provider<StorageService>.value(value: storage),
+        Provider<ApiClient>.value(value: api),
         Provider<ScannerService>.value(value: scannerService),
         ChangeNotifierProvider.value(value: authProvider..checkSession()),
         ChangeNotifierProvider(create: (_) => HuProvider(huRepository)),
@@ -71,7 +75,7 @@ class CoreWmsApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      navigatorKey: navigatorKey, // Chave global de navegação
+      navigatorKey: navigatorKey,
       title: 'CoreWMS',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

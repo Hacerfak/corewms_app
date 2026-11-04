@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -444,7 +445,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                           fontSize: 13,
                         ),
                         prefixIcon: const Icon(
-                          Icons.qr_code_scanner,
+                          LucideIcons.scan_barcode,
                           color: Color(0xFF3B82F6),
                           size: 20,
                         ),
@@ -463,7 +464,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                             if (_lpnController.text.isNotEmpty)
                               IconButton(
                                 icon: const Icon(
-                                  Icons.clear,
+                                  LucideIcons.x,
                                   color: Color(0xFF64748B),
                                   size: 18,
                                 ),
@@ -561,7 +562,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           const Icon(
-                            Icons.qr_code_scanner_rounded,
+                            LucideIcons.scan_barcode,
                             size: 64,
                             color: Color(0xFF334155),
                           ),
@@ -807,7 +808,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                     Row(
                                       children: [
                                         const Icon(
-                                          Icons.receipt_long_rounded,
+                                          LucideIcons.file_text,
                                           color: Color(0xFF60A5FA),
                                           size: 18,
                                         ),
@@ -1190,12 +1191,12 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                   elevation: 0,
                                 ),
                                 icon: const Icon(
-                                  Icons.drive_file_move_outline,
+                                  LucideIcons.move,
                                   color: Colors.white,
                                   size: 22,
                                 ),
                                 label: const Text(
-                                  'MOVER HU (TRANSFERIR POSIÇÃO)',
+                                  'MOVER HU',
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 13,
@@ -1215,25 +1216,25 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                               children: [
                                 _buildSecondaryActionButton(
                                   title: 'Dividir',
-                                  icon: Icons.call_split_rounded,
+                                  icon: LucideIcons.split,
                                   color: const Color(0xFF8B5CF6),
                                   onTap: () => _openSplitDialog(hu),
                                 ),
                                 _buildSecondaryActionButton(
                                   title: 'Agrupar',
-                                  icon: Icons.call_merge_rounded,
+                                  icon: LucideIcons.merge,
                                   color: const Color(0xFF6366F1),
                                   onTap: () => _openMergeDialog(hu),
                                 ),
                                 _buildSecondaryActionButton(
                                   title: 'Avaria',
-                                  icon: Icons.security_rounded,
+                                  icon: LucideIcons.shield_alert,
                                   color: const Color(0xFFF59E0B),
                                   onTap: () => _openQualityHoldDialog(hu),
                                 ),
                                 _buildSecondaryActionButton(
                                   title: 'Reimprimir',
-                                  icon: Icons.print_outlined,
+                                  icon: LucideIcons.printer,
                                   color: const Color(0xFF64748B),
                                   onTap: () => _openReprintDialog(hu),
                                 ),

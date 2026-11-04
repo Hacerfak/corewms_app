@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -294,7 +295,7 @@ class _MoveHuDialogState extends State<MoveHuDialog> {
                   fontSize: 12,
                 ),
                 prefixIcon: const Icon(
-                  Icons.qr_code_scanner,
+                  LucideIcons.scan_barcode,
                   color: Color(0xFF06B6D4),
                 ),
                 suffixIcon: Row(

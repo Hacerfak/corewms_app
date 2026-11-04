@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -104,7 +105,7 @@ class _InboundOrdersListScreenState extends State<InboundOrdersListScreen> {
                             fontSize: 12,
                           ),
                           prefixIcon: const Icon(
-                            Icons.qr_code_scanner,
+                            LucideIcons.scan_barcode,
                             color: Color(0xFF10B981),
                             size: 20,
                           ),
@@ -122,7 +123,7 @@ class _InboundOrdersListScreenState extends State<InboundOrdersListScreen> {
                               if (_searchController.text.isNotEmpty)
                                 IconButton(
                                   icon: const Icon(
-                                    Icons.clear,
+                                    LucideIcons.x,
                                     color: Color(0xFF64748B),
                                     size: 18,
                                   ),
@@ -284,7 +285,7 @@ class _InboundOrdersListScreenState extends State<InboundOrdersListScreen> {
                                             Row(
                                               children: [
                                                 const Icon(
-                                                  Icons.receipt_long_rounded,
+                                                  LucideIcons.file_text,
                                                   color: Color(0xFF34D399),
                                                   size: 18,
                                                 ),

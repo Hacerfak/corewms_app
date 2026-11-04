@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:provider/provider.dart';
 
 import '../../auth/presentation/auth_provider.dart';
@@ -48,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
         content: Row(
           children: [
             const Icon(
-              Icons.qr_code_scanner,
+              LucideIcons.scan_barcode,
               color: Color(0xFF3B82F6),
               size: 18,
             ),
@@ -146,7 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: const Row(
                   children: [
                     Icon(
-                      Icons.qr_code_scanner_rounded,
+                      LucideIcons.scan_barcode,
                       color: Color(0xFF60A5FA),
                       size: 20,
                     ),
@@ -177,7 +178,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     MenuCard(
                       title: 'Gestão de HU',
                       subtitle: 'Consulta, Mover, Merge, Split e Qualidade',
-                      icon: Icons.inventory_2_rounded,
+                      icon: LucideIcons.box,
                       color: const Color(0xFF3B82F6),
                       badge: 'ESTOQUE',
                       isEnabled: _hasPermission(auth, 'inventory:view'),
@@ -194,7 +195,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     MenuCard(
                       title: 'Recebimento',
                       subtitle: 'Descarga e conferência cega/guiada de NF-e',
-                      icon: Icons.move_to_inbox_rounded,
+                      icon: LucideIcons.package_open,
                       color: const Color(0xFF10B981),
                       badge: 'INBOUND',
                       isEnabled:
@@ -214,7 +215,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     MenuCard(
                       title: 'Separação',
                       subtitle: 'Picking consolidado e guiado por endereço',
-                      icon: Icons.alt_route_rounded,
+                      icon: LucideIcons.git_merge,
                       color: const Color(0xFFF59E0B), // Âmbar
                       badge: 'PICKING',
                       isEnabled: _hasPermission(auth, 'outbound:picking'),

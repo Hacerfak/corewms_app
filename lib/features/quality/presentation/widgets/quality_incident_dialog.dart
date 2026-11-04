@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -233,7 +234,7 @@ class _QualityIncidentDialogState extends State<QualityIncidentDialog> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(
-                      Icons.security_rounded,
+                      LucideIcons.shield_alert,
                       color: Color(0xFFFBBF24),
                       size: 24,
                     ),
@@ -433,7 +434,7 @@ class _QualityIncidentDialogState extends State<QualityIncidentDialog> {
                         fontSize: 12,
                       ),
                       prefixIcon: const Icon(
-                        Icons.qr_code_scanner,
+                        LucideIcons.scan_barcode,
                         color: Color(0xFFF59E0B),
                       ),
                       suffixIcon: Row(

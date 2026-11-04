@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -164,7 +165,7 @@ class _PrintLabelDialogState extends State<PrintLabelDialog> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(
-                    Icons.print_rounded,
+                    LucideIcons.printer,
                     color: Color(0xFF38BDF8),
                     size: 24,
                   ),

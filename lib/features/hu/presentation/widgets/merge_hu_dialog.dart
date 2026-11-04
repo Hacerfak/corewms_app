@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -418,7 +419,7 @@ class _MergeHuDialogState extends State<MergeHuDialog> {
                     fontSize: 12,
                   ),
                   prefixIcon: const Icon(
-                    Icons.qr_code_scanner,
+                    LucideIcons.scan_barcode,
                     color: Color(0xFF818CF8),
                   ),
                   suffixIcon: Row(

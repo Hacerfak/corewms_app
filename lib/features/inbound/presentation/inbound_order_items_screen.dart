@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:provider/provider.dart';
 
 import '../../auth/presentation/auth_provider.dart';
@@ -92,7 +93,7 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
-            Icon(Icons.warehouse_rounded, color: Color(0xFF10B981), size: 22),
+            Icon(LucideIcons.warehouse, color: Color(0xFF10B981), size: 22),
             SizedBox(width: 8),
             Text(
               'Doca de Recebimento',
@@ -144,7 +145,7 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
                         child: Row(
                           children: [
                             Icon(
-                              Icons.warehouse_rounded,
+                              LucideIcons.warehouse,
                               color: isPrevious
                                   ? const Color(0xFF34D399)
                                   : const Color(0xFF64748B),
@@ -605,7 +606,7 @@ class _InboundOrderItemsScreenState extends State<InboundOrderItemsScreen> {
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
                                                   Icon(
-                                                    Icons.warehouse_rounded,
+                                                    LucideIcons.warehouse,
                                                     size: 12,
                                                     color:
                                                         item.dockLocationPath !=

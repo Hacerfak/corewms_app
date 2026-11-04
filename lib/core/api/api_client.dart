@@ -7,23 +7,22 @@ import '../storage/storage_service.dart';
 import 'jwt_helper.dart';
 
 class ApiClient {
-  static const String baseUrl = 'https://wms.amplaarmazenagem.com.br';
   final StorageService _storage;
+  String _baseUrl;
+
+  String get baseUrl => _baseUrl;
 
   late final Dio dio;
   late final Dio _tokenDio;
 
-  /// Callback disparado quando os tokens expirarem e a renovação falhar
   void Function(String reason)? onSessionExpired;
-
-  // Trava de sincronização para evitar múltiplas chamadas simultâneas de refresh
   Completer<String?>? _refreshCompleter;
 
-  ApiClient(this._storage) {
-    // 1. Dio principal usado nas rotas da aplicação
+  ApiClient(this._storage, {String? initialBaseUrl})
+    : _baseUrl = initialBaseUrl ?? StorageService.defaultBaseUrl {
     dio = Dio(
       BaseOptions(
-        baseUrl: baseUrl,
+        baseUrl: _baseUrl,
         connectTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 15),
         headers: {
@@ -33,10 +32,9 @@ class ApiClient {
       ),
     );
 
-    // 2. Dio dedicado para refresh (sem interceptores para prevenir recursão)
     _tokenDio = Dio(
       BaseOptions(
-        baseUrl: baseUrl,
+        baseUrl: _baseUrl,
         connectTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 15),
         headers: {
@@ -49,7 +47,6 @@ class ApiClient {
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          // Ignora injeção de token para endpoints anônimos
           if (options.path.contains('/api/identity/login') ||
               options.path.contains('/api/identity/refresh')) {
             return handler.next(options);
@@ -57,12 +54,8 @@ class ApiClient {
 
           var token = await _storage.getToken();
 
-          // Renovação Proativa: se o token estiver expirado ou a 30s de expirar
           if (token != null && token.isNotEmpty) {
             if (JwtHelper.isExpired(token, thresholdSeconds: 30)) {
-              debugPrint(
-                '[API] Access Token expirando. Renovando proativamente...',
-              );
               final newToken = await refreshTokenDirect();
               if (newToken != null && newToken.isNotEmpty) {
                 token = newToken;
@@ -78,13 +71,10 @@ class ApiClient {
 
           return handler.next(options);
         },
-
         onError: (DioException error, handler) async {
-          // Trata apenas erros 401 (Não Autorizado)
           if (error.response?.statusCode == 401) {
             final path = error.requestOptions.path;
 
-            // Se o 401 foi no próprio login ou no refresh, não tenta refrescar
             if (path.contains('/api/identity/login') ||
                 path.contains('/api/identity/refresh')) {
               if (path.contains('/api/identity/refresh')) {
@@ -95,15 +85,9 @@ class ApiClient {
               return handler.next(error);
             }
 
-            debugPrint(
-              '[API 401] Token expirado na rota $path. Tentando refresh...',
-            );
-
-            // Tenta renovar o token sincronizadamente
             final newToken = await refreshTokenDirect();
 
             if (newToken != null && newToken.isNotEmpty) {
-              // Refaz a requisição original com o novo token
               final retryOptions = error.requestOptions;
               retryOptions.headers['Authorization'] = 'Bearer $newToken';
 
@@ -114,7 +98,6 @@ class ApiClient {
                 return handler.next(retryError);
               }
             } else {
-              // Não foi possível renovar: erro repassado e logout engatilhado
               return handler.next(error);
             }
           }
@@ -125,7 +108,44 @@ class ApiClient {
     );
   }
 
-  /// Executa a chamada /api/identity/refresh garantindo apenas 1 execução concorrente
+  /// Atualiza a URL base nos clientes HTTP Dio em tempo de execução
+  void updateBaseUrl(String newUrl) {
+    final clean = StorageService.sanitizeUrl(newUrl);
+    _baseUrl = clean;
+    dio.options.baseUrl = clean;
+    _tokenDio.options.baseUrl = clean;
+    debugPrint('[API] URL base atualizada para: $clean');
+  }
+
+  /// Testa se o servidor informado está acessível
+  Future<bool> testConnection(String url) async {
+    final clean = StorageService.sanitizeUrl(url);
+    try {
+      final testDio = Dio(
+        BaseOptions(
+          connectTimeout: const Duration(seconds: 5),
+          receiveTimeout: const Duration(seconds: 5),
+        ),
+      );
+      // Tenta carregar o logo ou a rota base do servidor
+      final res = await testDio.get('$clean/logo.png');
+      return res.statusCode == 200 || res.statusCode == 304;
+    } catch (_) {
+      try {
+        final testDio = Dio(
+          BaseOptions(
+            connectTimeout: const Duration(seconds: 5),
+            receiveTimeout: const Duration(seconds: 5),
+          ),
+        );
+        final res = await testDio.get(clean);
+        return res.statusCode != null && res.statusCode! < 500;
+      } catch (_) {
+        return false;
+      }
+    }
+  }
+
   Future<String?> refreshTokenDirect() async {
     if (_refreshCompleter != null) {
       return _refreshCompleter!.future;
@@ -136,7 +156,6 @@ class ApiClient {
     try {
       final refreshToken = await _storage.getRefreshToken();
       if (refreshToken == null || refreshToken.isEmpty) {
-        debugPrint('[AUTH] Nenhum refresh token armazenado.');
         _triggerSessionExpired('Sessão expirada. Faça login novamente.');
         _refreshCompleter!.complete(null);
         return null;
@@ -158,7 +177,6 @@ class ApiClient {
       final newRefreshToken = data?['refreshToken']?.toString();
 
       if (newAccessToken != null && newAccessToken.isNotEmpty) {
-        debugPrint('[AUTH] Token renovado com sucesso via Refresh Token!');
         await _storage.saveTokens(
           accessToken: newAccessToken,
           refreshToken: newRefreshToken,
@@ -171,7 +189,6 @@ class ApiClient {
         return null;
       }
     } catch (e) {
-      debugPrint('[AUTH] Falha ao renovar refresh token: $e');
       _triggerSessionExpired('Sua sessão expirou. Faça login novamente.');
       _refreshCompleter!.complete(null);
       return null;

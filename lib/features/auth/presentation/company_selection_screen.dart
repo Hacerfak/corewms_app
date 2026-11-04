@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:provider/provider.dart';
 
 import 'auth_provider.dart';
@@ -26,7 +27,7 @@ class CompanySelectionScreen extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout, color: Color(0xFF94A3B8)),
+            icon: const Icon(LucideIcons.log_out, color: Color(0xFF94A3B8)),
             onPressed: () => context.read<AuthProvider>().logout(),
           ),
         ],
@@ -79,7 +80,7 @@ class CompanySelectionScreen extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: const Icon(
-                                Icons.store_mall_directory_rounded,
+                                LucideIcons.warehouse,
                                 color: Color(0xFF3B82F6),
                               ),
                             ),
@@ -109,7 +110,7 @@ class CompanySelectionScreen extends StatelessWidget {
                               ),
                             ),
                             const Icon(
-                              Icons.chevron_right,
+                              LucideIcons.chevron_right,
                               color: Color(0xFF64748B),
                             ),
                           ],
