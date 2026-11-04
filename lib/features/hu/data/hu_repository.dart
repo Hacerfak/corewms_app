@@ -33,7 +33,6 @@ class HuRepository {
         Map<String, dynamic>.from(items.first),
       );
 
-      // Se a HU tem nota de entrada vinculada, busca detalhes do emitente se necessário
       if (hu.inboundOrderId != null &&
           hu.inboundOrderId!.isNotEmpty &&
           hu.issuerName == null) {
@@ -64,7 +63,6 @@ class HuRepository {
     }
   }
 
-  /// Consulta o endereço diretamente pelo endpoint dedicado da Topologia
   Future<LocationModel?> getLocationByCode(String codeOrPath) async {
     final clean = codeOrPath.trim().toUpperCase();
 
@@ -86,20 +84,18 @@ class HuRepository {
     return null;
   }
 
-  /// Move a HU enviando exatamente o contrato do MoveHandlingUnitCommand
   Future<void> moveHu({
     required String huId,
     required String targetLocationId,
   }) async {
     final payload = {
-      'handlingUnitIds': [huId], // Array de GUIDs exigido pelo backend
+      'handlingUnitIds': [huId],
       'destinationLocationId': targetLocationId,
     };
 
     await _api.dio.post('/api/inventory/handling-units/move', data: payload);
   }
 
-  /// Busca as embalagens configuradas especificamente para o produto da HU
   Future<List<ProductPackagingOption>> getProductPackagings(
     String productId,
   ) async {
@@ -120,7 +116,6 @@ class HuRepository {
     return [];
   }
 
-  /// Executa o desmembramento (Split) gerando a nova HU com os dados herdados
   Future<SplitHuResult> splitHu({
     required String sourceHuId,
     required double quantity,
@@ -145,7 +140,6 @@ class HuRepository {
     return SplitHuResult.fromJson(Map<String, dynamic>.from(response.data));
   }
 
-  /// Executa o agrupamento (Merge) entre duas HUs
   Future<MergeHuResult> mergeHu({
     required String sourceHuId,
     required String destinationLpn,
@@ -163,46 +157,5 @@ class HuRepository {
     );
 
     return MergeHuResult.fromJson(Map<String, dynamic>.from(response.data));
-  }
-
-  /// Busca os motivos de ocorrência ativos na empresa
-  Future<List<QualityReasonOption>> getQualityReasons() async {
-    try {
-      final response = await _api.dio.get('/api/quality/reasons');
-      final data = response.data;
-      if (data is List) {
-        return data
-            .whereType<Map<String, dynamic>>()
-            .map((item) => QualityReasonOption.fromJson(item))
-            .where((r) => r.isActive)
-            .toList();
-      }
-    } catch (e) {
-      debugPrint('[WARN] Falha ao carregar motivos de qualidade: $e');
-    }
-    return [];
-  }
-
-  /// Dispara o bloqueio de qualidade, fotos para compressão via Skia no servidor e movimentação física
-  Future<void> holdHandlingUnit({
-    required String huId,
-    required int newStatus, // 2 = Quarentena, 3 = Avaria
-    required String reasonId,
-    required String notes,
-    String? qualityLocationId,
-    List<QualityImageAttachment>? images,
-  }) async {
-    final payload = {
-      'handlingUnitIds': [huId],
-      'newStatus': newStatus,
-      'reasonId': reasonId,
-      'notes': notes.trim(),
-      if (qualityLocationId != null && qualityLocationId.isNotEmpty)
-        'qualityLocationId': qualityLocationId,
-      if (images != null && images.isNotEmpty)
-        'images': images.map((img) => img.toJson()).toList(),
-    };
-
-    await _api.dio.post('/api/quality/hold', data: payload);
   }
 }

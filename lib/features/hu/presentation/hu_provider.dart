@@ -25,12 +25,6 @@ class HuProvider extends ChangeNotifier {
   bool _isMerging = false;
   bool get isMerging => _isMerging;
 
-  bool _isHoldingQuality = false;
-  bool get isHoldingQuality => _isHoldingQuality;
-
-  List<QualityReasonOption> _qualityReasons = [];
-  List<QualityReasonOption> get qualityReasons => _qualityReasons;
-
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
@@ -72,7 +66,6 @@ class HuProvider extends ChangeNotifier {
   Future<LocationModel?> findLocation(String code) =>
       _repository.getLocationByCode(code);
 
-  /// Consulta uma HU por LPN sem alterar o estado da HU ativa no ecrã principal
   Future<HandlingUnitModel?> findHuByLpn(String lpn) =>
       _repository.getHuByLpn(lpn);
 
@@ -92,7 +85,6 @@ class HuProvider extends ChangeNotifier {
         targetLocationId: targetLocationId,
       );
 
-      // Atualiza os dados da HU imediatamente após a movimentação
       await searchHu(_currentHu!.lpn);
       return true;
     } catch (e) {
@@ -144,9 +136,7 @@ class HuProvider extends ChangeNotifier {
         packagingTypeId: packagingTypeId,
       );
 
-      // Atualiza o saldo restante da HU mãe após o split
       await searchHu(_currentHu!.lpn);
-
       return result;
     } catch (e) {
       if (e is DioException) {
@@ -183,9 +173,7 @@ class HuProvider extends ChangeNotifier {
         quantity: quantity,
       );
 
-      // Atualiza os dados da HU atual para refletir o novo saldo ou status consumido
       await searchHu(_currentHu!.lpn);
-
       return result;
     } catch (e) {
       if (e is DioException) {
@@ -201,56 +189,6 @@ class HuProvider extends ChangeNotifier {
       return null;
     } finally {
       _isMerging = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> loadQualityReasons() async {
-    if (_qualityReasons.isNotEmpty) return;
-    _qualityReasons = await _repository.getQualityReasons();
-    notifyListeners();
-  }
-
-  Future<bool> executeQualityHold({
-    required int newStatus,
-    required String reasonId,
-    required String notes,
-    String? qualityLocationId,
-    List<QualityImageAttachment>? images,
-  }) async {
-    if (_currentHu == null) return false;
-
-    _isHoldingQuality = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    try {
-      await _repository.holdHandlingUnit(
-        huId: _currentHu!.id,
-        newStatus: newStatus,
-        reasonId: reasonId,
-        notes: notes,
-        qualityLocationId: qualityLocationId,
-        images: images,
-      );
-
-      // Atualiza os dados da HU imediatamente para refletir o status de qualidade e endereço
-      await searchHu(_currentHu!.lpn);
-      return true;
-    } catch (e) {
-      if (e is DioException) {
-        _errorMessage = e.response?.data is Map
-            ? (e.response?.data['message'] ??
-                  e.response?.data['Message'] ??
-                  'Falha ao registrar ocorrência de qualidade.')
-            : 'Erro ao conectar à API de qualidade.';
-      } else {
-        _errorMessage = e.toString().replaceAll('Exception: ', '');
-      }
-      notifyListeners();
-      return false;
-    } finally {
-      _isHoldingQuality = false;
       notifyListeners();
     }
   }

@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../auth/presentation/auth_provider.dart';
 import '../../../core/scanner/scanner_service.dart';
 import '../../hu/presentation/hu_consultation_screen.dart';
+import '../../inbound/presentation/inbound_orders_list_screen.dart';
 import 'widgets/menu_card.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -194,11 +195,18 @@ class _HomeScreenState extends State<HomeScreen> {
                       title: 'Recebimento',
                       subtitle: 'Descarga e conferência cega/guiada de NF-e',
                       icon: Icons.move_to_inbox_rounded,
-                      color: const Color(0xFF10B981), // Esmeralda
+                      color: const Color(0xFF10B981),
                       badge: 'INBOUND',
-                      isEnabled: _hasPermission(auth, 'inbound:manage'),
+                      isEnabled:
+                          _hasPermission(auth, 'inbound:receive') ||
+                          _hasPermission(auth, 'inbound:manage') ||
+                          _hasPermission(auth, 'inbound:view'),
                       onTap: () {
-                        // Navega para lista de NF-es revisadas
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const InboundOrdersListScreen(),
+                          ),
+                        );
                       },
                     ),
 

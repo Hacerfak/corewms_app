@@ -13,9 +13,13 @@ import 'widgets/split_hu_dialog.dart';
 import 'widgets/split_success_dialog.dart';
 import 'widgets/merge_hu_dialog.dart';
 import 'widgets/merge_success_dialog.dart';
-import 'widgets/quality_hold_dialog.dart';
+
+// Módulos desacoplados:
 import '../../printing/presentation/printing_provider.dart';
 import '../../printing/presentation/widgets/print_label_dialog.dart';
+import '../../quality/data/quality_models.dart';
+import '../../quality/presentation/quality_provider.dart';
+import '../../quality/presentation/widgets/quality_incident_dialog.dart';
 
 class HuConsultationScreen extends StatefulWidget {
   final String? initialLpn;
@@ -66,6 +70,164 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
     }
   }
 
+  Future<void> _openCameraScanner() async {
+    final code = await QrScannerDialog.scan(
+      context,
+      title: 'Bipar QR Code da HU',
+    );
+    if (code != null && code.isNotEmpty && mounted) {
+      _lpnController.text = code;
+      context.read<HuProvider>().searchHu(code);
+    }
+  }
+
+  Future<void> _openMoveDialog(HandlingUnitModel hu) async {
+    final moved = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => MoveHuDialog(hu: hu),
+    );
+
+    if (moved == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: Color(0xFF10B981),
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text('HU movimentada com sucesso!'),
+            ],
+          ),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  Future<void> _openSplitDialog(HandlingUnitModel hu) async {
+    final result = await showDialog<SplitHuResult>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => SplitHuDialog(hu: hu),
+    );
+
+    if (result != null && mounted) {
+      final selectedLpn = await showDialog<String>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => SplitSuccessDialog(result: result),
+      );
+
+      if (selectedLpn != null && selectedLpn.isNotEmpty && mounted) {
+        _lpnController.text = selectedLpn;
+        context.read<HuProvider>().searchHu(selectedLpn);
+      }
+    }
+  }
+
+  Future<void> _openMergeDialog(HandlingUnitModel hu) async {
+    final result = await showDialog<MergeHuResult>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => MergeHuDialog(hu: hu),
+    );
+
+    if (result != null && mounted) {
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => MergeSuccessDialog(result: result),
+      );
+    }
+  }
+
+  /// Apontamento de Qualidade usando o módulo desacoplado
+  Future<void> _openQualityHoldDialog(HandlingUnitModel hu) async {
+    final result = await showDialog<QualityIncidentData>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => QualityIncidentDialog(
+        title: 'Apontamento de Qualidade da HU',
+        headerSummary: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F172A),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFF334155)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    hu.lpn,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'monospace',
+                      fontSize: 14,
+                    ),
+                  ),
+                  Text(
+                    '${hu.productSku} • Saldo: ${hu.currentQuantity.toStringAsFixed(0)} ${hu.productBaseUnit}',
+                    style: const TextStyle(
+                      color: Color(0xFF94A3B8),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                hu.currentLocationPath,
+                style: const TextStyle(
+                  color: Color(0xFF38BDF8),
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'monospace',
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+        onConfirm: (data) async {
+          final success = await context.read<QualityProvider>().executeHold(
+            handlingUnitIds: [hu.id],
+            newStatus: data.status.value,
+            reasonId: data.reasonId,
+            notes: data.notes,
+            qualityLocationId: data.targetLocationId,
+            images: data.images,
+          );
+
+          if (success) {
+            await context.read<HuProvider>().searchHu(hu.lpn);
+          }
+          return success;
+        },
+      ),
+    );
+
+    if (result != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: Color(0xFFF59E0B),
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text('Ocorrência de qualidade registrada com sucesso!'),
+            ],
+          ),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  /// Impressão usando o módulo desacoplado
   Future<void> _openReprintDialog(HandlingUnitModel hu) async {
     final printed = await showDialog<bool>(
       context: context,
@@ -155,103 +317,6 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
     }
   }
 
-  Future<void> _openCameraScanner() async {
-    final code = await QrScannerDialog.scan(
-      context,
-      title: 'Bipar QR Code da HU',
-    );
-    if (code != null && code.isNotEmpty && mounted) {
-      _lpnController.text = code;
-      context.read<HuProvider>().searchHu(code);
-    }
-  }
-
-  Future<void> _openMoveDialog(HandlingUnitModel hu) async {
-    final moved = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => MoveHuDialog(hu: hu),
-    );
-
-    if (moved == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          backgroundColor: Color(0xFF10B981),
-          content: Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Text('HU movimentada com sucesso!'),
-            ],
-          ),
-          duration: Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
-  Future<void> _openSplitDialog(HandlingUnitModel hu) async {
-    final result = await showDialog<SplitHuResult>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => SplitHuDialog(hu: hu),
-    );
-
-    if (result != null && mounted) {
-      final selectedLpn = await showDialog<String>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => SplitSuccessDialog(result: result),
-      );
-
-      // Se o operador desejar consultar a nova HU filha criada imediatamente:
-      if (selectedLpn != null && selectedLpn.isNotEmpty && mounted) {
-        _lpnController.text = selectedLpn;
-        context.read<HuProvider>().searchHu(selectedLpn);
-      }
-    }
-  }
-
-  Future<void> _openMergeDialog(HandlingUnitModel hu) async {
-    final result = await showDialog<MergeHuResult>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => MergeHuDialog(hu: hu),
-    );
-
-    if (result != null && mounted) {
-      await showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => MergeSuccessDialog(result: result),
-      );
-    }
-  }
-
-  Future<void> _openQualityHoldDialog(HandlingUnitModel hu) async {
-    final result = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => QualityHoldDialog(hu: hu),
-    );
-
-    if (result == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          backgroundColor: Color(0xFFF59E0B),
-          content: Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Text('Ocorrência de qualidade registrada com sucesso!'),
-            ],
-          ),
-          duration: Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
   Color _getQualityColor(String quality) {
     switch (quality.toUpperCase()) {
       case 'AVAILABLE':
@@ -284,17 +349,17 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
   Color _getStatusColor(String status) {
     switch (status.toUpperCase()) {
       case 'STORED':
-        return const Color(0xFF3B82F6); // Azul
+        return const Color(0xFF3B82F6);
       case 'INDOCK':
       case 'RECEIVING':
-        return const Color(0xFF10B981); // Verde
+        return const Color(0xFF10B981);
       case 'ALLOCATED':
       case 'PICKING':
-        return const Color(0xFFF59E0B); // Amarelo
+        return const Color(0xFFF59E0B);
       case 'CONSUMED':
       case 'SHIPPED':
       case 'BAIXADO':
-        return const Color(0xFF64748B); // Cinza
+        return const Color(0xFF64748B);
       default:
         return const Color(0xFF8B5CF6);
     }
@@ -353,7 +418,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // BARRA DE PESQUISA (BIP, CÂMERA OU DIGITAÇÃO)
+            // BARRA DE PESQUISA
             Container(
               padding: const EdgeInsets.all(12),
               color: const Color(0xFF1E293B),
@@ -523,7 +588,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          // AVISO SE A HU ESTIVER CONSUMIDA / BAIXADA
+                          // BLOQUEIO QUANDO CONSUMIDA
                           if (!hu.canPerformActions) ...[
                             Container(
                               padding: const EdgeInsets.all(12),
@@ -571,7 +636,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                             const SizedBox(height: 12),
                           ],
 
-                          // 1. CARD PRINCIPAL DA HU & STATUS REAL
+                          // CARD DA HU
                           Container(
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
@@ -609,7 +674,6 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                     ),
                                     Row(
                                       children: [
-                                        // Badge do Status Físico/Ciclo da HU
                                         Container(
                                           padding: const EdgeInsets.symmetric(
                                             horizontal: 7,
@@ -636,7 +700,6 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                           ),
                                         ),
                                         const SizedBox(width: 6),
-                                        // Badge de Qualidade
                                         Container(
                                           padding: const EdgeInsets.symmetric(
                                             horizontal: 7,
@@ -674,8 +737,6 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                   color: Color(0xFF334155),
                                   height: 20,
                                 ),
-
-                                // Localização Atual
                                 Row(
                                   children: [
                                     Container(
@@ -723,7 +784,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                           ),
                           const SizedBox(height: 12),
 
-                          // 2. CARD COMPLETO DA NOTA FISCAL DE ENTRADA
+                          // CARD NF-e
                           Container(
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
@@ -856,7 +917,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                           ),
                           const SizedBox(height: 12),
 
-                          // 3. PRODUTO & EMBALAGEM COMPLETA
+                          // PRODUTO & EMBALAGEM
                           Container(
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
@@ -886,8 +947,6 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 8),
-
-                                // Descrição da Embalagem
                                 Container(
                                   width: double.infinity,
                                   padding: const EdgeInsets.symmetric(
@@ -931,7 +990,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                           ),
                           const SizedBox(height: 12),
 
-                          // 4. RASTREABILIDADE (LOTE E VALIDADE)
+                          // RASTREABILIDADE
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
@@ -1024,7 +1083,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                           ),
                           const SizedBox(height: 12),
 
-                          // 5. PESOS E VALOR PATRIMONIAL
+                          // PESOS E VALOR
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
@@ -1115,7 +1174,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                           ),
                           const SizedBox(height: 16),
 
-                          // 6. AÇÕES OPERACIONAIS (SÓ EXIBIDAS SE A HU ESTIVER ATIVA)
+                          // AÇÕES OPERACIONAIS
                           if (hu.canPerformActions) ...[
                             SizedBox(
                               height: 52,
@@ -1144,7 +1203,6 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                               ),
                             ),
                             const SizedBox(height: 10),
-
                             GridView.count(
                               crossAxisCount: 2,
                               shrinkWrap: true,

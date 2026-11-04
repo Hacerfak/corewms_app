@@ -8,19 +8,30 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/scanner/qr_scanner_dialog.dart';
 import '../../../../core/scanner/scanner_service.dart';
-import '../../data/hu_models.dart';
-import '../hu_provider.dart';
+import '../../../hu/data/hu_models.dart';
+import '../../../hu/presentation/hu_provider.dart';
+import '../../data/quality_models.dart';
+import '../quality_provider.dart';
 
-class QualityHoldDialog extends StatefulWidget {
-  final HandlingUnitModel hu;
+class QualityIncidentDialog extends StatefulWidget {
+  final String title;
+  final Widget? headerSummary;
+  final bool showLocationTransfer;
+  final Future<bool> Function(QualityIncidentData data)? onConfirm;
 
-  const QualityHoldDialog({super.key, required this.hu});
+  const QualityIncidentDialog({
+    super.key,
+    this.title = 'Apontamento de Qualidade',
+    this.headerSummary,
+    this.showLocationTransfer = true,
+    this.onConfirm,
+  });
 
   @override
-  State<QualityHoldDialog> createState() => _QualityHoldDialogState();
+  State<QualityIncidentDialog> createState() => _QualityIncidentDialogState();
 }
 
-class _QualityHoldDialogState extends State<QualityHoldDialog> {
+class _QualityIncidentDialogState extends State<QualityIncidentDialog> {
   final _notesController = TextEditingController();
   final _locationController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -31,7 +42,7 @@ class _QualityHoldDialogState extends State<QualityHoldDialog> {
   QualityStatusTarget _selectedStatus = QualityStatusTarget.damaged;
   String? _selectedReasonId;
   bool _shouldMoveToLocation = false;
-  LocationModel? _resolvedQualityLocation;
+  LocationModel? _resolvedLocation;
   bool _isResolvingLocation = false;
   String? _localError;
 
@@ -42,10 +53,9 @@ class _QualityHoldDialogState extends State<QualityHoldDialog> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<HuProvider>().loadQualityReasons();
+      context.read<QualityProvider>().loadReasons();
     });
 
-    // Escuta o laser do Movfast para leitura da posição de qualidade
     final scanner = context.read<ScannerService>();
     _scanSubscription = scanner.onScan.listen((barcode) {
       if (!mounted || !_shouldMoveToLocation) return;
@@ -119,7 +129,7 @@ class _QualityHoldDialogState extends State<QualityHoldDialog> {
 
       if (location == null) {
         setState(() {
-          _resolvedQualityLocation = null;
+          _resolvedLocation = null;
           _isResolvingLocation = false;
           _localError = 'Endereço "$clean" não cadastrado na Topologia.';
         });
@@ -128,7 +138,7 @@ class _QualityHoldDialogState extends State<QualityHoldDialog> {
       }
 
       setState(() {
-        _resolvedQualityLocation = location;
+        _resolvedLocation = location;
         _isResolvingLocation = false;
         _localError = null;
       });
@@ -136,7 +146,7 @@ class _QualityHoldDialogState extends State<QualityHoldDialog> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _resolvedQualityLocation = null;
+        _resolvedLocation = null;
         _isResolvingLocation = false;
         _localError = e.toString().replaceAll('Exception: ', '');
       });
@@ -153,43 +163,56 @@ class _QualityHoldDialogState extends State<QualityHoldDialog> {
       return;
     }
 
-    if (_shouldMoveToLocation && _resolvedQualityLocation == null) {
-      setState(
-        () => _localError =
-            'Bipe ou valide a posição de destino para transferir a HU.',
-      );
+    if (_shouldMoveToLocation && _resolvedLocation == null) {
+      setState(() => _localError = 'Bipe ou valide o endereço de destino.');
       HapticFeedback.heavyImpact();
       return;
     }
 
-    final provider = context.read<HuProvider>();
-    final success = await provider.executeQualityHold(
-      newStatus: _selectedStatus.value,
+    final qualityProvider = context.read<QualityProvider>();
+    final reasonObj = qualityProvider.reasons.firstWhere(
+      (r) => r.id == _selectedReasonId,
+      orElse: () => QualityReasonModel(
+        id: _selectedReasonId!,
+        code: 'OUTRO',
+        description: '',
+        isActive: true,
+      ),
+    );
+
+    final incidentData = QualityIncidentData(
+      status: _selectedStatus,
       reasonId: _selectedReasonId!,
+      reasonCode: reasonObj.code,
       notes: _notesController.text.trim(),
-      qualityLocationId: _shouldMoveToLocation
-          ? _resolvedQualityLocation?.id
+      targetLocationId: _shouldMoveToLocation ? _resolvedLocation?.id : null,
+      targetLocationPath: _shouldMoveToLocation
+          ? _resolvedLocation?.fullPath
           : null,
       images: _attachments,
     );
 
-    if (!mounted) return;
-
-    if (success) {
-      HapticFeedback.mediumImpact();
-      Navigator.of(context).pop(true);
+    if (widget.onConfirm != null) {
+      final success = await widget.onConfirm!(incidentData);
+      if (!mounted) return;
+      if (success) {
+        HapticFeedback.mediumImpact();
+        Navigator.of(context).pop(incidentData);
+      } else {
+        HapticFeedback.heavyImpact();
+      }
     } else {
-      HapticFeedback.heavyImpact();
+      Navigator.of(context).pop(incidentData);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<HuProvider>();
-    final reasons = provider.qualityReasons;
+    final qualityProvider = context.watch<QualityProvider>();
+    final reasons = qualityProvider.reasons;
 
     return Dialog(
-      backgroundColor: const Color(0xFF1E293B),
+      backgroundColor: const Color(0xFF1E293B), // Slate 800
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       insetPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
       child: SingleChildScrollView(
@@ -216,19 +239,19 @@ class _QualityHoldDialogState extends State<QualityHoldDialog> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Apontamento de Qualidade',
-                          style: TextStyle(
+                          widget.title,
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        Text(
+                        const Text(
                           'Avaria física, retenção e bloqueios',
                           style: TextStyle(
                             color: Color(0xFF94A3B8),
@@ -242,53 +265,13 @@ class _QualityHoldDialogState extends State<QualityHoldDialog> {
               ),
               const SizedBox(height: 14),
 
-              // Resumo da HU
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0F172A),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF334155)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.hu.lpn,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'monospace',
-                            fontSize: 14,
-                          ),
-                        ),
-                        Text(
-                          '${widget.hu.productSku} • Saldo: ${widget.hu.currentQuantity.toStringAsFixed(0)} ${widget.hu.productBaseUnit}',
-                          style: const TextStyle(
-                            color: Color(0xFF94A3B8),
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Text(
-                      widget.hu.currentLocationPath,
-                      style: const TextStyle(
-                        color: Color(0xFF38BDF8),
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'monospace',
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
+              if (widget.headerSummary != null) ...[
+                widget.headerSummary!,
+                const SizedBox(height: 14),
+              ],
 
-              if (_localError != null || provider.errorMessage != null) ...[
+              if (_localError != null ||
+                  qualityProvider.errorMessage != null) ...[
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
@@ -297,7 +280,7 @@ class _QualityHoldDialogState extends State<QualityHoldDialog> {
                     border: Border.all(color: const Color(0xFF991B1B)),
                   ),
                   child: Text(
-                    _localError ?? provider.errorMessage ?? '',
+                    _localError ?? qualityProvider.errorMessage ?? '',
                     style: const TextStyle(
                       color: Color(0xFFFCA5A5),
                       fontSize: 12,
@@ -307,7 +290,7 @@ class _QualityHoldDialogState extends State<QualityHoldDialog> {
                 const SizedBox(height: 12),
               ],
 
-              // 1. Tipo de Bloqueio (Avaria / Quarentena)
+              // 1. Tipo de Bloqueio
               const Text(
                 'Tipo de Ocorrência',
                 style: TextStyle(
@@ -338,9 +321,10 @@ class _QualityHoldDialogState extends State<QualityHoldDialog> {
               ),
               const SizedBox(height: 14),
 
-              // 2. Motivo da Ocorrência
+              // 2. Motivo da Ocorrência (Com isExpanded para prevenir overflow de texto)
               DropdownButtonFormField<String>(
                 initialValue: _selectedReasonId,
+                isExpanded: true,
                 dropdownColor: const Color(0xFF1E293B),
                 style: const TextStyle(color: Colors.white, fontSize: 13),
                 decoration: InputDecoration(
@@ -357,9 +341,18 @@ class _QualityHoldDialogState extends State<QualityHoldDialog> {
                   ),
                 ),
                 items: reasons.map((r) {
+                  final label =
+                      r.description.isNotEmpty && r.description != r.code
+                      ? '${r.code} - ${r.description}'
+                      : r.code;
+
                   return DropdownMenuItem<String>(
                     value: r.id,
-                    child: Text('${r.code} - ${r.description}'),
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   );
                 }).toList(),
                 onChanged: (val) => setState(() => _selectedReasonId = val),
@@ -374,12 +367,12 @@ class _QualityHoldDialogState extends State<QualityHoldDialog> {
                 maxLength: 500,
                 style: const TextStyle(color: Colors.white, fontSize: 13),
                 decoration: InputDecoration(
-                  labelText: 'Descrição detalhada da avaria/retenção *',
+                  labelText: 'Descrição detalhada do problema *',
                   labelStyle: const TextStyle(
                     color: Color(0xFF94A3B8),
                     fontSize: 12,
                   ),
-                  hintText: 'Ex: Fardo rompido com vazamento visível no nível inferior...',
+                  hintText: 'Ex: Caixa rompida, produto avariado no palete...',
                   hintStyle: const TextStyle(
                     color: Color(0xFF64748B),
                     fontSize: 12,
@@ -398,130 +391,131 @@ class _QualityHoldDialogState extends State<QualityHoldDialog> {
               const SizedBox(height: 8),
 
               // 4. Movimentação Opcional Integrada
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                activeThumbColor: const Color(0xFFF59E0B),
-                activeTrackColor: const Color(0xFFF59E0B)
-                    .withValues(alpha: 0.3),
-                title: const Text(
-                  'Transferir para Posição de Qualidade',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                subtitle: const Text(
-                  'Move fisicamente a HU para a área de quarentena/avarias',
-                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
-                ),
-                value: _shouldMoveToLocation,
-                onChanged: (val) => setState(() {
-                  _shouldMoveToLocation = val;
-                  if (!val) _resolvedQualityLocation = null;
-                }),
-              ),
-
-              if (_shouldMoveToLocation) ...[
-                const SizedBox(height: 6),
-                TextFormField(
-                  controller: _locationController,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontFamily: 'monospace',
-                    fontSize: 13,
-                  ),
-                  textInputAction: TextInputAction.done,
-                  onFieldSubmitted: _resolveLocation,
-                  decoration: InputDecoration(
-                    labelText: 'Bipe ou digite o Endereço de Qualidade',
-                    labelStyle: const TextStyle(
-                      color: Color(0xFF94A3B8),
-                      fontSize: 12,
+              if (widget.showLocationTransfer) ...[
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  activeThumbColor: const Color(0xFFF59E0B),
+                  activeTrackColor: const Color(0xFFF59E0B)
+                      .withValues(alpha: 0.3),
+                  title: const Text(
+                    'Transferir para Posição de Qualidade',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
                     ),
-                    prefixIcon: const Icon(
-                      Icons.qr_code_scanner,
-                      color: Color(0xFFF59E0B),
+                  ),
+                  subtitle: const Text(
+                    'Move fisicamente para a área de quarentena/avarias',
+                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                  ),
+                  value: _shouldMoveToLocation,
+                  onChanged: (val) => setState(() {
+                    _shouldMoveToLocation = val;
+                    if (!val) _resolvedLocation = null;
+                  }),
+                ),
+                if (_shouldMoveToLocation) ...[
+                  const SizedBox(height: 6),
+                  TextFormField(
+                    controller: _locationController,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontFamily: 'monospace',
+                      fontSize: 13,
                     ),
-                    suffixIcon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(
-                            Icons.photo_camera_rounded,
-                            color: Color(0xFF60A5FA),
-                            size: 18,
-                          ),
-                          onPressed: _openCameraScannerLocation,
-                        ),
-                        if (_isResolvingLocation)
-                          const Padding(
-                            padding: EdgeInsets.all(12),
-                            child: SizedBox(
-                              height: 16,
-                              width: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Color(0xFFF59E0B),
-                              ),
-                            ),
-                          )
-                        else
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: _resolveLocation,
+                    decoration: InputDecoration(
+                      labelText: 'Bipe ou digite o Endereço de Qualidade',
+                      labelStyle: const TextStyle(
+                        color: Color(0xFF94A3B8),
+                        fontSize: 12,
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.qr_code_scanner,
+                        color: Color(0xFFF59E0B),
+                      ),
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
                           IconButton(
                             icon: const Icon(
-                              Icons.arrow_forward_rounded,
-                              color: Color(0xFFF59E0B),
+                              Icons.photo_camera_rounded,
+                              color: Color(0xFF60A5FA),
+                              size: 18,
                             ),
-                            onPressed: () =>
-                                _resolveLocation(_locationController.text),
+                            onPressed: _openCameraScannerLocation,
                           ),
-                      ],
-                    ),
-                    filled: true,
-                    fillColor: const Color(0xFF0F172A),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide.none,
+                          if (_isResolvingLocation)
+                            const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: SizedBox(
+                                height: 16,
+                                width: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Color(0xFFF59E0B),
+                                ),
+                              ),
+                            )
+                          else
+                            IconButton(
+                              icon: const Icon(
+                                Icons.arrow_forward_rounded,
+                                color: Color(0xFFF59E0B),
+                              ),
+                              onPressed: () =>
+                                  _resolveLocation(_locationController.text),
+                            ),
+                        ],
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xFF0F172A),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
                   ),
-                ),
-                if (_resolvedQualityLocation != null) ...[
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF064E3B).withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFF059669)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.check_circle_rounded,
-                          color: Color(0xFF34D399),
-                          size: 14,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Destino: ${_resolvedQualityLocation!.fullPath}',
-                          style: const TextStyle(
+                  if (_resolvedLocation != null) ...[
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF064E3B).withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFF059669)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.check_circle_rounded,
                             color: Color(0xFF34D399),
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'monospace',
-                            fontSize: 12,
+                            size: 14,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 6),
+                          Text(
+                            'Destino: ${_resolvedLocation!.fullPath}',
+                            style: const TextStyle(
+                              color: Color(0xFF34D399),
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'monospace',
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
+                  const SizedBox(height: 12),
                 ],
-                const SizedBox(height: 12),
               ],
 
-              // 5. Seção de Fotos Anexas
+              // 5. Fotos / Evidências
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -611,9 +605,9 @@ class _QualityHoldDialogState extends State<QualityHoldDialog> {
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: provider.isHoldingQuality
+                      onPressed: qualityProvider.isSubmitting
                           ? null
-                          : () => Navigator.of(context).pop(false),
+                          : () => Navigator.of(context).pop(),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         side: const BorderSide(color: Color(0xFF475569)),
@@ -635,7 +629,7 @@ class _QualityHoldDialogState extends State<QualityHoldDialog> {
                   Expanded(
                     flex: 2,
                     child: ElevatedButton(
-                      onPressed: provider.isHoldingQuality ? null : _submit,
+                      onPressed: qualityProvider.isSubmitting ? null : _submit,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFF59E0B),
                         padding: const EdgeInsets.symmetric(vertical: 14),
@@ -643,7 +637,7 @@ class _QualityHoldDialogState extends State<QualityHoldDialog> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      child: provider.isHoldingQuality
+                      child: qualityProvider.isSubmitting
                           ? const SizedBox(
                               height: 18,
                               width: 18,
@@ -653,7 +647,7 @@ class _QualityHoldDialogState extends State<QualityHoldDialog> {
                               ),
                             )
                           : const Text(
-                              'REGISTRAR BLOQUEIO',
+                              'CONFIRMAR OCORRÊNCIA',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 13,
