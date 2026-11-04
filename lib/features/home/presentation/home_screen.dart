@@ -10,6 +10,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_provider.dart';
 import '../../hu/presentation/hu_consultation_screen.dart';
 import '../../inbound/presentation/inbound_orders_list_screen.dart';
+import '../../allocation/presentation/allocation_orders_screen.dart';
 import 'widgets/menu_card.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -207,9 +208,24 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                     ),
                     MenuCard(
+                      title: 'Alocação / Guarda',
+                      subtitle: 'Armazenamento inteligente das HUs da doca',
+                      icon: LucideIcons.arrow_down_to_dot,
+                      color: const Color(0xFF0284C7),
+                      badge: 'PUTAWAY',
+                      isEnabled: _hasPermission(auth, 'inbound:receive'),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const AllocationOrdersScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    MenuCard(
                       title: 'Separação',
                       subtitle: 'Picking consolidado e guiado por endereço',
-                      icon: LucideIcons.git_merge,
+                      icon: LucideIcons.blocks,
                       color: const Color(0xFFF59E0B),
                       badge: 'PICKING',
                       isEnabled: _hasPermission(auth, 'outbound:picking'),
@@ -218,7 +234,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     MenuCard(
                       title: 'Embalagem',
                       subtitle: 'Conferência de mesa e formação de volumes',
-                      icon: LucideIcons.package_search,
+                      icon: LucideIcons.package_plus,
                       color: const Color(0xFF8B5CF6),
                       badge: 'PACKING',
                       isEnabled: _hasPermission(auth, 'outbound:packing'),

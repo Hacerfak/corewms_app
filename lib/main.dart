@@ -19,6 +19,8 @@ import 'features/printing/data/printing_repository.dart';
 import 'features/printing/presentation/printing_provider.dart';
 import 'features/quality/data/quality_repository.dart';
 import 'features/quality/presentation/quality_provider.dart';
+import 'features/allocation/data/allocation_repository.dart';
+import 'features/allocation/presentation/allocation_provider.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -35,6 +37,7 @@ void main() async {
   final printingRepository = PrintingRepository(api);
   final qualityRepository = QualityRepository(api);
   final inboundRepository = InboundRepository(api);
+  final allocationRepository = AllocationRepository(api);
 
   final authProvider = AuthProvider(authRepository, storage);
 
@@ -65,6 +68,9 @@ void main() async {
         ),
         ChangeNotifierProvider(
           create: (_) => InboundProvider(inboundRepository),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => AllocationProvider(allocationRepository),
         ),
       ],
       child: const CoreWmsApp(),
