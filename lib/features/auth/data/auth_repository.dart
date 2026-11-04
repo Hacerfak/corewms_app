@@ -13,7 +13,7 @@ class AuthRepository {
 
   AuthRepository(this._api, this._storage);
 
-  /// 1. Realiza login e armazena os tokens (sem consultar permissões)
+  /// 1. Realiza login e armazena os tokens
   Future<UserMeResponse> login(String email, String password) async {
     final response = await _api.dio.post(
       '/api/identity/login',
@@ -38,22 +38,47 @@ class AuthRepository {
       refreshToken: refreshToken?.toString(),
     );
 
-    // Salva os dados brutos da sessão em cache
     await _storage.saveUserData(jsonEncode(data));
 
-    // Retorna os dados do usuário com a lista de permissões inicialmente vazia
     return UserMeResponse.fromLoginData(data, const []);
   }
 
-  /// 2. Consulta as permissões da empresa selecionada enviando o X-Company-Id
+  /// 2. Dispara o refresh token diretamente
+  Future<String?> refreshToken() => _api.refreshTokenDirect();
+
+  /// 3. Consulta e valida o usuário atual no servidor (/api/users/me)
+  Future<UserMeResponse?> getMe({String? companyId}) async {
+    try {
+      final options = (companyId != null && companyId.isNotEmpty)
+          ? Options(headers: {'X-Company-Id': companyId})
+          : null;
+
+      final response = await _api.dio.get('/api/users/me', options: options);
+
+      if (response.data is Map<String, dynamic>) {
+        final data = response.data as Map<String, dynamic>;
+        await _storage.saveUserData(jsonEncode(data));
+        final perms =
+            (data['permissions'] as List<dynamic>?)
+                ?.map((p) => p.toString())
+                .toList() ??
+            [];
+        return UserMeResponse.fromLoginData(data, perms);
+      }
+    } catch (e) {
+      debugPrint('[AUTH] Falha ao consultar /api/users/me: $e');
+      rethrow;
+    }
+    return null;
+  }
+
+  /// 4. Consulta permissões por empresa
   Future<List<String>> fetchCompanyPermissions(String companyId) async {
     try {
       final response = await _api.dio.get(
         '/api/users/me/permissions',
         options: Options(headers: {'X-Company-Id': companyId}),
       );
-
-      debugPrint('[PERMISSIONS (Company: $companyId)]: ${response.data}');
 
       if (response.data is List) {
         return (response.data as List).map((p) => p.toString()).toList();
@@ -63,12 +88,12 @@ class AuthRepository {
             .toList();
       }
     } catch (e) {
-      debugPrint('[WARN] Falha ao consultar permissões da empresa: $e');
+      debugPrint('[WARN] Falha ao consultar permissões: $e');
     }
     return [];
   }
 
-  /// 3. Salva a empresa escolhida e obtém as permissões do operador nela
+  /// 5. Salva a empresa e busca suas permissões
   Future<List<String>> selectCompany(UserCompany company) async {
     await _storage.saveSelectedCompany(
       id: company.id,
@@ -78,7 +103,7 @@ class AuthRepository {
     return await fetchCompanyPermissions(company.id);
   }
 
-  /// 4. Restaura os dados do usuário a partir do cache local
+  /// 6. Restaura os dados em cache
   Future<UserMeResponse?> getCachedUser({
     List<String> permissions = const [],
   }) async {

@@ -1,9 +1,10 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/api/jwt_helper.dart';
+import '../../../core/storage/storage_service.dart';
 import '../data/auth_models.dart';
 import '../data/auth_repository.dart';
-import '../../../core/storage/storage_service.dart';
 
 enum AuthStatus { unknown, unauthenticated, selectingCompany, authenticated }
 
@@ -26,44 +27,92 @@ class AuthProvider extends ChangeNotifier {
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
+  VoidCallback? onForceLogout;
+
   AuthProvider(this._repository, this._storage);
 
   /// Valida sessão existente ao abrir o aplicativo
   Future<void> checkSession() async {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
 
     try {
       final token = await _storage.getToken();
-      if (token == null || token.isEmpty) {
-        _status = AuthStatus.unauthenticated;
-      } else {
-        final companyId = await _storage.getCompanyId();
+      final refreshToken = await _storage.getRefreshToken();
 
-        if (companyId != null && companyId.isNotEmpty) {
-          // Empresa já selecionada anteriormente: busca permissões dela
-          final permissions = await _repository.fetchCompanyPermissions(
-            companyId,
-          );
-          _user = await _repository.getCachedUser(permissions: permissions);
-          _selectedCompanyName = await _storage.getCompanyName();
-          _status = AuthStatus.authenticated;
-        } else {
-          // Token válido, mas sem empresa escolhida: redireciona para seleção
-          _user = await _repository.getCachedUser(permissions: const []);
-          _status = AuthStatus.selectingCompany;
+      // Sem credenciais salvas
+      if (token == null ||
+          token.isEmpty ||
+          refreshToken == null ||
+          refreshToken.isEmpty) {
+        _status = AuthStatus.unauthenticated;
+        return;
+      }
+
+      // 1. Se o token estiver expirado (ou a 60s de expirar), reautentica com refresh token
+      if (JwtHelper.isExpired(token, thresholdSeconds: 60)) {
+        debugPrint(
+          '[AUTH] Token expirado ao iniciar app. Tentando reautenticação...',
+        );
+        final newToken = await _repository.refreshToken();
+
+        if (newToken == null || newToken.isEmpty) {
+          debugPrint('[AUTH] Refresh token expirado/inválido ao abrir.');
+          await _storage.clearAll();
+          _status = AuthStatus.unauthenticated;
+          _errorMessage = 'Sua sessão expirou. Faça login novamente.';
+          return;
         }
       }
-    } catch (_) {
+
+      // 2. Com token válido/renovado, consulta o perfil atualizado e valida com o servidor
+      final companyId = await _storage.getCompanyId();
+      UserMeResponse? userMe;
+
+      try {
+        userMe = await _repository.getMe(companyId: companyId);
+      } on DioException catch (e) {
+        // Se a API rejeitou com 401 e o refresh também não foi possível
+        if (e.response?.statusCode == 401) {
+          await _storage.clearAll();
+          _status = AuthStatus.unauthenticated;
+          _errorMessage = 'Sua sessão expirou. Faça login novamente.';
+          return;
+        }
+        // Em falhas pontuais de conexão (offline), restaura do cache local
+        userMe = await _repository.getCachedUser();
+      }
+
+      if (userMe == null) {
+        await _storage.clearAll();
+        _status = AuthStatus.unauthenticated;
+        return;
+      }
+
+      _user = userMe;
+
+      if (companyId != null &&
+          companyId.isNotEmpty &&
+          userMe.companies.any((c) => c.id == companyId)) {
+        _selectedCompanyName = await _storage.getCompanyName();
+        _status = AuthStatus.authenticated;
+      } else {
+        _selectedCompanyName = null;
+        _status = AuthStatus.selectingCompany;
+      }
+    } catch (e) {
+      debugPrint('[AUTH] Falha ao verificar sessão: $e');
       await _storage.clearAll();
       _status = AuthStatus.unauthenticated;
+      _errorMessage = 'Sua sessão expirou. Faça login novamente.';
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  /// Realiza o login. Se possuir 1 empresa só, seleciona automaticamente.
+  /// Realiza o login inicial
   Future<bool> login(String email, String password) async {
     _isLoading = true;
     _errorMessage = null;
@@ -76,11 +125,9 @@ class AuthProvider extends ChangeNotifier {
         throw Exception('Usuário sem vínculo com nenhuma empresa.');
       }
 
-      // Se possui apenas 1 empresa vinculada, seleciona e carrega permissões imediatamente
       if (_user!.companies.length == 1) {
         await selectCompany(_user!.companies.first);
       } else {
-        // Múltiplas empresas: vai para a tela de seleção sem chamar permissões ainda
         _status = AuthStatus.selectingCompany;
         notifyListeners();
       }
@@ -114,7 +161,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Disparado ao tocar em uma empresa: busca as permissões daquela unidade e avança
+  /// Seleção de empresa ativa
   Future<void> selectCompany(UserCompany company) async {
     _isLoading = true;
     notifyListeners();
@@ -134,7 +181,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Retorna à tela de escolha de armazém/empresa e limpa permissões ativas
+  /// Troca de empresa
   void switchCompany() {
     if (_user != null) {
       _user = _user!.copyWith(permissions: const []);
@@ -144,11 +191,22 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Logout normal
   Future<void> logout() async {
     await _repository.logout();
     _user = null;
     _selectedCompanyName = null;
     _status = AuthStatus.unauthenticated;
     notifyListeners();
+  }
+
+  /// Força o logout e redireciona imediatamente para o Login
+  void forceLogout({String? reason}) {
+    _user = null;
+    _selectedCompanyName = null;
+    _status = AuthStatus.unauthenticated;
+    _errorMessage = reason ?? 'Sua sessão expirou. Faça login novamente.';
+    notifyListeners();
+    onForceLogout?.call();
   }
 }

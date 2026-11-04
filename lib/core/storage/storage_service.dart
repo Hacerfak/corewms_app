@@ -21,6 +21,9 @@ class StorageService {
 
   Future<String?> getToken() => _storage.read(key: _tokenKey);
 
+  /// Leitura do Refresh Token
+  Future<String?> getRefreshToken() => _storage.read(key: _refreshTokenKey);
+
   Future<void> saveSelectedCompany({
     required String id,
     required String name,

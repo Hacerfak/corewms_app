@@ -11,12 +11,14 @@ import 'features/auth/presentation/login_screen.dart';
 import 'features/home/presentation/home_screen.dart';
 import 'features/hu/data/hu_repository.dart';
 import 'features/hu/presentation/hu_provider.dart';
+import 'features/inbound/data/inbound_repository.dart';
+import 'features/inbound/presentation/inbound_provider.dart';
 import 'features/printing/data/printing_repository.dart';
 import 'features/printing/presentation/printing_provider.dart';
 import 'features/quality/data/quality_repository.dart';
 import 'features/quality/presentation/quality_provider.dart';
-import 'features/inbound/data/inbound_repository.dart';
-import 'features/inbound/presentation/inbound_provider.dart';
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,13 +32,23 @@ void main() async {
   final qualityRepository = QualityRepository(api);
   final inboundRepository = InboundRepository(api);
 
+  final authProvider = AuthProvider(authRepository, storage);
+
+  // 1. Quando o refresh falhar no ApiClient, desloga e envia para o Login
+  api.onSessionExpired = (reason) {
+    authProvider.forceLogout(reason: reason);
+  };
+
+  // 2. Quando o AuthProvider forçar logout, fecha todas as rotas filhas abertas
+  authProvider.onForceLogout = () {
+    navigatorKey.currentState?.popUntil((route) => route.isFirst);
+  };
+
   runApp(
     MultiProvider(
       providers: [
         Provider<ScannerService>.value(value: scannerService),
-        ChangeNotifierProvider(
-          create: (_) => AuthProvider(authRepository, storage)..checkSession(),
-        ),
+        ChangeNotifierProvider.value(value: authProvider..checkSession()),
         ChangeNotifierProvider(create: (_) => HuProvider(huRepository)),
         ChangeNotifierProvider(
           create: (_) => PrintingProvider(printingRepository),
@@ -59,6 +71,7 @@ class CoreWmsApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey, // Chave global de navegação
       title: 'CoreWMS',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
