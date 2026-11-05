@@ -11,6 +11,9 @@ import '../../../core/theme/theme_provider.dart';
 import '../../hu/presentation/hu_consultation_screen.dart';
 import '../../inbound/presentation/inbound_orders_list_screen.dart';
 import '../../allocation/presentation/allocation_orders_screen.dart';
+import '../../picking/presentation/picking_screen.dart';
+import '../../packing/presentation/packing_orders_list_screen.dart';
+import '../../checking/presentation/checking_orders_list_screen.dart';
 import 'widgets/menu_card.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -228,8 +231,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       icon: LucideIcons.blocks,
                       color: const Color(0xFFF59E0B),
                       badge: 'PICKING',
-                      isEnabled: _hasPermission(auth, 'outbound:picking'),
-                      onTap: () {},
+                      isEnabled:
+                          _hasPermission(auth, 'outbound:picking') ||
+                          _hasPermission(auth, 'outbound:manage'),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const PickingScreen(),
+                          ),
+                        );
+                      },
                     ),
                     MenuCard(
                       title: 'Embalagem',
@@ -237,17 +248,33 @@ class _HomeScreenState extends State<HomeScreen> {
                       icon: LucideIcons.package_plus,
                       color: const Color(0xFF8B5CF6),
                       badge: 'PACKING',
-                      isEnabled: _hasPermission(auth, 'outbound:packing'),
-                      onTap: () {},
+                      isEnabled:
+                          _hasPermission(auth, 'outbound:packing') ||
+                          _hasPermission(auth, 'outbound:manage'),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const PackingOrdersListScreen(),
+                          ),
+                        );
+                      },
                     ),
                     MenuCard(
                       title: 'Conferência',
                       subtitle: 'Check-out de expedição e validação de carga',
                       icon: LucideIcons.clipboard_check,
-                      color: const Color(0xFF06B6D4),
+                      color: const Color(0xFF06B6D4), // Ciano
                       badge: 'EXPEDIÇÃO',
-                      isEnabled: _hasPermission(auth, 'outbound:checking'),
-                      onTap: () {},
+                      isEnabled:
+                          _hasPermission(auth, 'outbound:checking') ||
+                          _hasPermission(auth, 'outbound:manage'),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const CheckingOrdersListScreen(),
+                          ),
+                        );
+                      },
                     ),
                     MenuCard(
                       title: 'Inventário',

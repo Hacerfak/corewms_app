@@ -21,6 +21,12 @@ import 'features/quality/data/quality_repository.dart';
 import 'features/quality/presentation/quality_provider.dart';
 import 'features/allocation/data/allocation_repository.dart';
 import 'features/allocation/presentation/allocation_provider.dart';
+import 'features/picking/data/picking_repository.dart';
+import 'features/picking/presentation/picking_provider.dart';
+import 'features/packing/data/packing_repository.dart';
+import 'features/packing/presentation/packing_provider.dart';
+import 'features/checking/data/checking_repository.dart';
+import 'features/checking/presentation/checking_provider.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -38,6 +44,9 @@ void main() async {
   final qualityRepository = QualityRepository(api);
   final inboundRepository = InboundRepository(api);
   final allocationRepository = AllocationRepository(api);
+  final pickingRepository = PickingRepository(api);
+  final packingRepository = PackingRepository(api);
+  final checkingRepository = CheckingRepository(api);
 
   final authProvider = AuthProvider(authRepository, storage);
 
@@ -71,6 +80,15 @@ void main() async {
         ),
         ChangeNotifierProvider(
           create: (_) => AllocationProvider(allocationRepository),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => PickingProvider(pickingRepository),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => PackingProvider(packingRepository),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => CheckingProvider(checkingRepository),
         ),
       ],
       child: const CoreWmsApp(),
