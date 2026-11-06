@@ -9,8 +9,8 @@ import '../../../core/scanner/qr_scanner_dialog.dart';
 import '../../../core/scanner/scanner_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/picking_models.dart';
-import '../presentation/picking_provider.dart';
 import 'location_products_screen.dart';
+import 'picking_provider.dart';
 
 class OrderPickingScreen extends StatefulWidget {
   final String orderId;
@@ -31,10 +31,14 @@ class _OrderPickingScreenState extends State<OrderPickingScreen> {
       context.read<PickingProvider>().loadSingleOrderTasks(widget.orderId);
     });
 
-    // Escuta o laser do coletor: se bipar o endereço, abre a posição diretamente
     final scanner = context.read<ScannerService>();
     _scanSubscription = scanner.onScan.listen((barcode) {
       if (!mounted) return;
+
+      // TRAVA DE CONTEXTO: Só reage se este ecrã for a rota ativa no topo!
+      final route = ModalRoute.of(context);
+      if (route == null || !route.isCurrent) return;
+
       _handleScannedBarcode(barcode.trim());
     });
   }
@@ -52,7 +56,7 @@ class _OrderPickingScreenState extends State<OrderPickingScreen> {
     final provider = context.read<PickingProvider>();
     final groups = provider.currentOrderGroupsByLocation;
 
-    // 1. Verifica se bipou o código de um endereço deste pedido
+    // 1. Verifica se bipou um endereço deste pedido
     final matchingGroup = groups.firstWhere(
       (g) => g.locationPath.toUpperCase() == barcode.toUpperCase(),
       orElse: () => LocationPickingGroup(locationPath: '', tasks: []),
@@ -95,7 +99,6 @@ class _OrderPickingScreenState extends State<OrderPickingScreen> {
       ),
     );
 
-    // Recarrega os dados do pedido ao retornar da posição
     if (mounted) {
       context.read<PickingProvider>().loadSingleOrderTasks(widget.orderId);
     }
@@ -171,7 +174,6 @@ class _OrderPickingScreenState extends State<OrderPickingScreen> {
     final summary = provider.currentOrderSummary;
     final groups = provider.currentOrderGroupsByLocation;
 
-    // Métricas gerais do pedido
     final allOrderTasks = groups.expand((g) => g.tasks).toList();
     final totalExpected = allOrderTasks.fold(0.0, (s, t) => s + t.quantity);
     final totalPicked = allOrderTasks
@@ -232,7 +234,7 @@ class _OrderPickingScreenState extends State<OrderPickingScreen> {
             )
           : Column(
               children: [
-                // Barra de Progresso do Pedido
+                // Barra de Progresso
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -290,7 +292,7 @@ class _OrderPickingScreenState extends State<OrderPickingScreen> {
                   ),
                 ),
 
-                // Lista de Endereços Requeridos (Subagrupamento por Posição)
+                // Lista de Endereços do Pedido
                 Expanded(
                   child: groups.isEmpty
                       ? Center(
@@ -334,8 +336,6 @@ class _OrderPickingScreenState extends State<OrderPickingScreen> {
                             final group = groups[idx];
                             final pendingCount = group.pendingTasksCount;
                             final isGroupDone = pendingCount == 0;
-
-                            // Agrupa os itens da posição por SKU para exibir o resumo claro
                             final distinctSkus = group.tasks
                                 .map((t) => t.skuCode)
                                 .toSet();
@@ -361,7 +361,6 @@ class _OrderPickingScreenState extends State<OrderPickingScreen> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      // Topo: Posição + Badge
                                       Row(
                                         mainAxisAlignment:
                                             MainAxisAlignment.spaceBetween,
@@ -423,8 +422,6 @@ class _OrderPickingScreenState extends State<OrderPickingScreen> {
                                         ],
                                       ),
                                       const SizedBox(height: 8),
-
-                                      // Resumo dos Produtos desta posição
                                       Text(
                                         'Produtos: ${distinctSkus.join(", ")}',
                                         style: TextStyle(
@@ -443,13 +440,10 @@ class _OrderPickingScreenState extends State<OrderPickingScreen> {
                                           fontSize: 11,
                                         ),
                                       ),
-
                                       Divider(
                                         color: context.border,
                                         height: 16,
                                       ),
-
-                                      // Botão de Ação para acessar a mesa da posição
                                       Row(
                                         mainAxisAlignment:
                                             MainAxisAlignment.end,

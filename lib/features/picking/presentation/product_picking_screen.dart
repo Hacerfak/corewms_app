@@ -55,7 +55,7 @@ class _ProductPickingScreenState extends State<ProductPickingScreen> {
     _scanSubscription = scanner.onScan.listen((barcode) {
       if (!mounted) return;
 
-      // Trava de contexto da tela ativa
+      // TRAVA DE CONTEXTO: Processa apenas se esta tela for a rota ativa no topo!
       final route = ModalRoute.of(context);
       if (route == null || !route.isCurrent) return;
 
@@ -81,7 +81,6 @@ class _ProductPickingScreenState extends State<ProductPickingScreen> {
     }
   }
 
-  /// Recupera as sugestões pendentes deste produto
   List<PickingAllocatedHuModel> _getPendingSuggestions() {
     final provider = context.read<PickingProvider>();
 
@@ -124,8 +123,6 @@ class _ProductPickingScreenState extends State<ProductPickingScreen> {
         .toList();
   }
 
-  /// Recupera TODAS as HUs BIPADAS / CONFIRMADAS deste produto
-  /// Busca por produto e item, permitindo HUs de blocado flexível
   List<PickingAllocatedHuModel> _getPickedHus() {
     final provider = context.read<PickingProvider>();
 
@@ -195,7 +192,6 @@ class _ProductPickingScreenState extends State<ProductPickingScreen> {
         .fold(0.0, (s, t) => s + t.quantity);
   }
 
-  /// Ao bipar com o leitor laser do Movfast, apenas preenche o campo
   void _handleScannedLpn(String lpn) {
     if (lpn.isEmpty) return;
     HapticFeedback.lightImpact();
@@ -260,6 +256,7 @@ class _ProductPickingScreenState extends State<ProductPickingScreen> {
       });
 
       _setupInitialQty();
+      // Não executa pop automático: mantém o operador na tela para conferência e revisão
     } else {
       HapticFeedback.heavyImpact();
       setState(
