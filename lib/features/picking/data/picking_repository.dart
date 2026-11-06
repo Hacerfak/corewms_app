@@ -8,7 +8,6 @@ class PickingRepository {
 
   PickingRepository(this._api);
 
-  /// 1. Busca os pedidos que estão prontos para separação (Allocated ou Picking)
   Future<List<dynamic>> getActivePickingOrders({String? search}) async {
     try {
       final response = await _api.dio.get(
@@ -28,18 +27,16 @@ class PickingRepository {
         items = data;
       }
 
-      // Filtra pedidos em estado de separação (Allocated = 3, Picking = 4)
-      return items.whereType<Map<String, dynamic>>().where((o) {
+      return items.whereType<Map>().where((o) {
         final s = o['status']?.toString().toUpperCase() ?? '';
         return s == 'ALLOCATED' || s == 'PICKING';
       }).toList();
     } catch (e) {
-      debugPrint('[PICKING] Erro ao listar pedidos de saída: $e');
+      debugPrint('[PICKING] Erro ao listar pedidos: $e');
       return [];
     }
   }
 
-  /// 2. Detalhes das tarefas de picking de um pedido específico
   Future<PickingOrderSummaryModel?> getOrderPickingTasks(String orderId) async {
     try {
       final response = await _api.dio.get(
@@ -56,7 +53,7 @@ class PickingRepository {
     return null;
   }
 
-  /// 3. Confirma a recolha física (Picking) de uma HU ou quantidade
+  /// Executa o scan aceitando qualquer HU compatível de mesmo produto/lote
   Future<Map<String, dynamic>?> scanAndPick({
     required String orderId,
     required String? orderItemId,
@@ -80,5 +77,24 @@ class PickingRepository {
       return Map<String, dynamic>.from(response.data);
     }
     return null;
+  }
+
+  /// Estorna uma HU específica recolhida
+  Future<bool> undoPickedHu({
+    required String orderId,
+    required String allocationId,
+  }) async {
+    final response = await _api.dio.post(
+      '/api/outbound/picking/orders/$orderId/undo/$allocationId',
+    );
+    return response.statusCode == 200;
+  }
+
+  /// Reinicia 100% da separação do pedido
+  Future<bool> resetOrderPicking(String orderId) async {
+    final response = await _api.dio.post(
+      '/api/outbound/picking/orders/$orderId/reset',
+    );
+    return response.statusCode == 200;
   }
 }

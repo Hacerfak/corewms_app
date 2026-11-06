@@ -225,4 +225,72 @@ class PickingProvider extends ChangeNotifier {
       orElse: () => null,
     );
   }
+
+  /// Estorna a separação de uma HU individual
+  Future<bool> undoPick({
+    required String orderId,
+    required String allocationId,
+  }) async {
+    _isPicking = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final success = await _repository.undoPickedHu(
+        orderId: orderId,
+        allocationId: allocationId,
+      );
+
+      if (success) {
+        await loadAllData();
+        if (_currentOrderSummary != null &&
+            _currentOrderSummary!.orderId == orderId) {
+          await loadSingleOrderTasks(orderId);
+        }
+      }
+      return success;
+    } catch (e) {
+      if (e is DioException) {
+        _errorMessage = e.response?.data?['message'] ?? 'Falha ao estornar HU.';
+      } else {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+      }
+      notifyListeners();
+      return false;
+    } finally {
+      _isPicking = false;
+      notifyListeners();
+    }
+  }
+
+  /// Reinicia o processo completo de separação da ordem
+  Future<bool> resetOrderPicking(String orderId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final success = await _repository.resetOrderPicking(orderId);
+      if (success) {
+        await loadAllData();
+        if (_currentOrderSummary != null &&
+            _currentOrderSummary!.orderId == orderId) {
+          await loadSingleOrderTasks(orderId);
+        }
+      }
+      return success;
+    } catch (e) {
+      if (e is DioException) {
+        _errorMessage =
+            e.response?.data?['message'] ?? 'Falha ao reiniciar separação.';
+      } else {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+      }
+      notifyListeners();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }

@@ -32,6 +32,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final scanner = context.read<ScannerService>();
     _scanSubscription = scanner.onScan.listen((barcode) {
       if (!mounted) return;
+
+      // TRAVA DE CONTEXTO: Processa apenas se a HomeScreen for a tela no topo!
+      final route = ModalRoute.of(context);
+      if (route == null || !route.isCurrent) return;
+
       _handleQuickScan(barcode);
     });
   }

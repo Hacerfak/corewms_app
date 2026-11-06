@@ -10,9 +10,9 @@ import '../../../core/scanner/scanner_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_provider.dart';
 import '../data/picking_models.dart';
-import '../presentation/picking_provider.dart';
+import 'location_products_screen.dart';
 import 'order_picking_screen.dart';
-import 'widgets/pick_quantity_dialog.dart';
+import 'picking_provider.dart';
 
 class PickingScreen extends StatefulWidget {
   const PickingScreen({super.key});
@@ -35,6 +35,11 @@ class _PickingScreenState extends State<PickingScreen> {
     final scanner = context.read<ScannerService>();
     _scanSubscription = scanner.onScan.listen((barcode) {
       if (!mounted) return;
+
+      // TRAVA DE CONTEXTO: Ignora o bip se esta tela não for a tela no topo!
+      final route = ModalRoute.of(context);
+      if (route == null || !route.isCurrent) return;
+
       _handleQuickScan(barcode.trim());
     });
   }
@@ -46,42 +51,54 @@ class _PickingScreenState extends State<PickingScreen> {
     super.dispose();
   }
 
-  /// Ao bipar um LPN no leitor laser, acha a tarefa e abre a confirmação imediata
   void _handleQuickScan(String barcode) {
+    if (barcode.isEmpty) return;
     HapticFeedback.lightImpact();
     final provider = context.read<PickingProvider>();
 
+    // 1. Verifica se bipou um endereço existente
+    final matchLoc = provider.locationGroups.firstWhere(
+      (g) => g.locationPath.toUpperCase() == barcode.toUpperCase(),
+      orElse: () => LocationPickingGroup(locationPath: '', tasks: []),
+    );
+    if (matchLoc.locationPath.isNotEmpty) {
+      _openLocationScreen(matchLoc.locationPath);
+      return;
+    }
+
+    // 2. Verifica se bipou o LPN de uma HU pendente
     final task = provider.findPendingTaskByLpn(barcode);
     if (task != null) {
-      _openPickDialog(task);
-    } else {
-      _searchController.text = barcode;
-      setState(() {});
+      _openLocationScreen(task.locationPath);
+      return;
+    }
+
+    // 3. Caso contrário, joga no filtro
+    _searchController.text = barcode;
+    setState(() {});
+  }
+
+  Future<void> _openLocationScreen(String locationPath) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => LocationProductsScreen(locationPath: locationPath),
+      ),
+    );
+
+    if (mounted) {
+      context.read<PickingProvider>().loadAllData(
+        search: _searchController.text,
+      );
     }
   }
 
   Future<void> _openCamera() async {
     final code = await QrScannerDialog.scan(
       context,
-      title: 'Bipar LPN da HU / Endereço',
+      title: 'Bipar Endereço ou LPN da HU',
     );
     if (code != null && code.isNotEmpty && mounted) {
       _handleQuickScan(code);
-    }
-  }
-
-  Future<void> _openPickDialog(ConsolidatedPickingTask task) async {
-    final result = await showDialog<Map<String, dynamic>>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => PickQuantityDialog(task: task),
-    );
-
-    if (result != null && mounted) {
-      final msg = result['message']?.toString() ?? 'Item separado com sucesso!';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(backgroundColor: const Color(0xFF10B981), content: Text(msg)),
-      );
     }
   }
 
@@ -91,7 +108,6 @@ class _PickingScreenState extends State<PickingScreen> {
     final themeProvider = context.watch<ThemeProvider>();
     final search = _searchController.text.trim().toLowerCase();
 
-    // Filtros
     final filteredLocations = provider.locationGroups.where((g) {
       if (search.isEmpty) return true;
       final matchLoc = g.locationPath.toLowerCase().contains(search);
@@ -141,7 +157,7 @@ class _PickingScreenState extends State<PickingScreen> {
       ),
       body: Column(
         children: [
-          // Seletor de Modo (Por Endereço vs Por Pedido)
+          // Seletor de Modo
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
@@ -204,7 +220,7 @@ class _PickingScreenState extends State<PickingScreen> {
             ),
           ),
 
-          // Barra de Pesquisa & Bipagem
+          // Barra de Pesquisa
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -259,7 +275,7 @@ class _PickingScreenState extends State<PickingScreen> {
             ),
           ),
 
-          // Conteúdo da Lista
+          // Conteúdo
           Expanded(
             child: provider.isLoading
                 ? const Center(
@@ -274,7 +290,6 @@ class _PickingScreenState extends State<PickingScreen> {
     );
   }
 
-  /// Visão 1: Agrupado por Endereço (Consolidado de todos os pedidos)
   Widget _buildByLocationView(List<LocationPickingGroup> groups) {
     if (groups.isEmpty) {
       return Center(
@@ -311,178 +326,149 @@ class _PickingScreenState extends State<PickingScreen> {
       itemBuilder: (context, idx) {
         final group = groups[idx];
         final pendingCount = group.pendingTasksCount;
+        final isGroupDone = pendingCount == 0;
+        final distinctSkus = group.tasks.map((t) => t.skuCode).toSet();
 
-        return Container(
-          decoration: BoxDecoration(
-            color: context.card,
+        return Material(
+          color: context.card,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: context.border),
-          ),
-          child: ExpansionTile(
-            initiallyExpanded: true,
-            tilePadding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 4,
-            ),
-            leading: Container(
-              padding: const EdgeInsets.all(8),
+            onTap: () => _openLocationScreen(group.locationPath),
+            child: Container(
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                LucideIcons.map_pin,
-                color: Color(0xFFF59E0B),
-                size: 20,
-              ),
-            ),
-            title: Text(
-              group.locationPath,
-              style: TextStyle(
-                color: context.textPrimary,
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
-                fontFamily: 'monospace',
-              ),
-            ),
-            subtitle: Text(
-              '${group.distinctOrderNumbers.length} pedido(s): ${group.distinctOrderNumbers.join(", ")}',
-              style: TextStyle(color: context.textSecondary, fontSize: 11),
-              overflow: TextOverflow.ellipsis,
-            ),
-            trailing: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: pendingCount > 0
-                    ? const Color(0xFFF59E0B).withValues(alpha: 0.15)
-                    : const Color(0xFF10B981).withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                pendingCount > 0 ? '$pendingCount volume(s)' : 'Concluído',
-                style: TextStyle(
-                  color: pendingCount > 0
-                      ? const Color(0xFFF59E0B)
-                      : const Color(0xFF10B981),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 11,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isGroupDone
+                      ? const Color(0xFF10B981)
+                      : const Color(0xFFF59E0B),
+                  width: isGroupDone ? 1 : 1.5,
                 ),
               ),
-            ),
-            children: [
-              Divider(color: context.border, height: 1),
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(10),
-                itemCount: group.tasks.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 8),
-                itemBuilder: (context, taskIdx) {
-                  final task = group.tasks[taskIdx];
-
-                  return Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: context.cardSubtle,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: context.border),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(
-                          task.isPicked
-                              ? LucideIcons.circle_check
-                              : LucideIcons.circle,
-                          color: task.isPicked
-                              ? const Color(0xFF10B981)
-                              : context.textMuted,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Pedido #${task.orderNumber}',
-                                    style: const TextStyle(
-                                      color: Color(0xFF2563EB),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  Text(
-                                    '${task.quantity.toStringAsFixed(0)} ${task.baseUnit}',
-                                    style: TextStyle(
-                                      color: context.textPrimary,
-                                      fontWeight: FontWeight.bold,
-                                      fontFamily: 'monospace',
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '${task.skuCode} - ${task.description}',
-                                style: TextStyle(
-                                  color: context.textPrimary,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'LPN: ${task.lpn} • Lote: ${task.batch ?? "SEM LOTE"}',
-                                style: TextStyle(
-                                  color: context.textSecondary,
-                                  fontSize: 10,
-                                  fontFamily: 'monospace',
-                                ),
-                              ),
-                            ],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            LucideIcons.map_pin,
+                            size: 18,
+                            color: isGroupDone
+                                ? const Color(0xFF10B981)
+                                : const Color(0xFFF59E0B),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        if (!task.isPicked)
-                          ElevatedButton(
-                            onPressed: () => _openPickDialog(task),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFF59E0B),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                            ),
-                            child: const Text(
-                              'COLETAR',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
+                          const SizedBox(width: 8),
+                          Text(
+                            group.locationPath,
+                            style: TextStyle(
+                              color: context.textPrimary,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'monospace',
+                              fontSize: 15,
                             ),
                           ),
-                      ],
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isGroupDone
+                              ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                              : const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: isGroupDone
+                                ? const Color(0xFF10B981)
+                                : const Color(0xFFF59E0B),
+                          ),
+                        ),
+                        child: Text(
+                          isGroupDone ? 'Concluído' : '$pendingCount volume(s)',
+                          style: TextStyle(
+                            color: isGroupDone
+                                ? const Color(0xFF10B981)
+                                : const Color(0xFFD97706),
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Produtos: ${distinctSkus.join(", ")}',
+                    style: TextStyle(
+                      color: context.textPrimary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
                     ),
-                  );
-                },
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${group.distinctOrderNumbers.length} pedido(s): ${group.distinctOrderNumbers.join(", ")}',
+                    style: TextStyle(
+                      color: context.textSecondary,
+                      fontSize: 11,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Divider(color: context.border, height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        isGroupDone
+                            ? 'Volumes recolhidos'
+                            : 'Pendente: ${group.totalPendingQuantity.toStringAsFixed(0)} un',
+                        style: TextStyle(
+                          color: context.textSecondary,
+                          fontSize: 11,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          Text(
+                            isGroupDone
+                                ? 'Revisar / Estornar'
+                                : 'Acessar Endereço',
+                            style: TextStyle(
+                              color: isGroupDone
+                                  ? const Color(0xFF10B981)
+                                  : const Color(0xFFF59E0B),
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            LucideIcons.chevron_right,
+                            size: 16,
+                            color: isGroupDone
+                                ? const Color(0xFF10B981)
+                                : const Color(0xFFF59E0B),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         );
       },
     );
   }
 
-  /// Visão 2: Lista por Pedido
   Widget _buildByOrderView(List<Map<String, dynamic>> orders) {
     if (orders.isEmpty) {
       return Center(
@@ -529,12 +515,18 @@ class _PickingScreenState extends State<PickingScreen> {
           borderRadius: BorderRadius.circular(12),
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
-            onTap: () {
-              Navigator.of(context).push(
+            onTap: () async {
+              final pickingProvider = context.read<PickingProvider>();
+              final searchText = _searchController.text;
+
+              await Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => OrderPickingScreen(orderId: orderId),
                 ),
               );
+
+              if (!mounted) return;
+              pickingProvider.loadAllData(search: searchText);
             },
             child: Container(
               padding: const EdgeInsets.all(14),
