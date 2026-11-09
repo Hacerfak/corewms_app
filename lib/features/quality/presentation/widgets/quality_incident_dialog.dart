@@ -237,7 +237,7 @@ class _QualityIncidentDialogState extends State<QualityIncidentDialog> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(
-                      LucideIcons.shield_alert,
+                      LucideIcons.shield_exclamation_point,
                       color: Color(0xFFF59E0B),
                       size: 24,
                     ),
@@ -293,7 +293,7 @@ class _QualityIncidentDialogState extends State<QualityIncidentDialog> {
                   child: Row(
                     children: [
                       Icon(
-                        LucideIcons.circle_alert,
+                        LucideIcons.circle_exclamation_point,
                         size: 16,
                         color: isDark
                             ? const Color(0xFFFCA5A5)

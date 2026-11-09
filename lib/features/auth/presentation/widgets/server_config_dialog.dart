@@ -289,7 +289,7 @@ class _ServerConfigDialogState extends State<ServerConfigDialog> {
                     Icon(
                       _testSuccess == true
                           ? LucideIcons.circle_check
-                          : LucideIcons.circle_alert,
+                          : LucideIcons.circle_exclamation_point,
                       size: 16,
                       color: statusTextColor,
                     ),

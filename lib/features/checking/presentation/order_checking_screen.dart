@@ -235,7 +235,7 @@ class _OrderCheckingScreenState extends State<OrderCheckingScreen>
                     child: Row(
                       children: [
                         const Icon(
-                          LucideIcons.circle_alert,
+                          LucideIcons.circle_exclamation_point,
                           color: Color(0xFFEF4444),
                           size: 16,
                         ),
@@ -338,7 +338,7 @@ class _OrderCheckingScreenState extends State<OrderCheckingScreen>
                           child: Row(
                             children: [
                               const Icon(
-                                LucideIcons.circle_alert,
+                                LucideIcons.circle_exclamation_point,
                                 color: Color(0xFFEF4444),
                                 size: 16,
                               ),

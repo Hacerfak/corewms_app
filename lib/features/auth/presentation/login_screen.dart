@@ -334,7 +334,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                             child: Row(
                                               children: [
                                                 Icon(
-                                                  LucideIcons.circle_alert,
+                                                  LucideIcons
+                                                      .circle_exclamation_point,
                                                   color: isDark
                                                       ? const Color(0xFFFCA5A5)
                                                       : const Color(0xFFE11D48),

@@ -282,7 +282,7 @@ class _MoveHuDialogState extends State<MoveHuDialog> {
                 child: Row(
                   children: [
                     Icon(
-                      LucideIcons.circle_alert,
+                      LucideIcons.circle_exclamation_point,
                       size: 16,
                       color: isDark
                           ? const Color(0xFFFCA5A5)

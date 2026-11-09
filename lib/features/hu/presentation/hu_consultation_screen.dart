@@ -528,7 +528,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             const Icon(
-                              LucideIcons.circle_alert,
+                              LucideIcons.circle_exclamation_point,
                               size: 56,
                               color: Color(0xFFEF4444),
                             ),
@@ -1205,7 +1205,7 @@ class _HuConsultationScreenState extends State<HuConsultationScreen> {
                                 ),
                                 _buildSecondaryActionButton(
                                   title: 'Avaria',
-                                  icon: LucideIcons.shield_alert,
+                                  icon: LucideIcons.shield_exclamation_point,
                                   color: const Color(0xFFF59E0B),
                                   onTap: () => _openQualityHoldDialog(hu),
                                 ),
