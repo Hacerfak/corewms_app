@@ -109,4 +109,30 @@ class CheckingProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<bool> finalizeChecking(String orderId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final success = await _repository.finalizeChecking(orderId);
+      if (success) {
+        await loadOrders();
+      }
+      return success;
+    } catch (e) {
+      if (e is DioException) {
+        _errorMessage =
+            e.response?.data?['message'] ?? 'Falha ao finalizar conferência.';
+      } else {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+      }
+      notifyListeners();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }

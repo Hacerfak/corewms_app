@@ -293,4 +293,29 @@ class PickingProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  /// Executa a finalização manual da separação do pedido
+  Future<bool> finalizePicking(String orderId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final res = await _repository.finalizeOrderPicking(orderId);
+      await loadAllData();
+      return res != null;
+    } catch (e) {
+      if (e is DioException) {
+        _errorMessage =
+            e.response?.data?['message'] ?? 'Falha ao finalizar separação.';
+      } else {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+      }
+      notifyListeners();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }

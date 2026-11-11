@@ -105,4 +105,13 @@ class CheckingRepository {
     );
     return response.statusCode == 200;
   }
+
+  /// Finaliza a conferência de expedição da ordem de saída
+  Future<bool> finalizeChecking(String orderId) async {
+    final response = await _api.dio.post(
+      '/api/outbound/checking/orders/$orderId/finalize',
+      data: {'orderId': orderId},
+    );
+    return response.statusCode == 200;
+  }
 }

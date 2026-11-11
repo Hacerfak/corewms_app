@@ -35,7 +35,6 @@ class _OrderPickingScreenState extends State<OrderPickingScreen> {
     _scanSubscription = scanner.onScan.listen((barcode) {
       if (!mounted) return;
 
-      // TRAVA DE CONTEXTO: Só reage se este ecrã for a rota ativa no topo!
       final route = ModalRoute.of(context);
       if (route == null || !route.isCurrent) return;
 
@@ -56,7 +55,6 @@ class _OrderPickingScreenState extends State<OrderPickingScreen> {
     final provider = context.read<PickingProvider>();
     final groups = provider.currentOrderGroupsByLocation;
 
-    // 1. Verifica se bipou um endereço deste pedido
     final matchingGroup = groups.firstWhere(
       (g) => g.locationPath.toUpperCase() == barcode.toUpperCase(),
       orElse: () => LocationPickingGroup(locationPath: '', tasks: []),
@@ -67,7 +65,6 @@ class _OrderPickingScreenState extends State<OrderPickingScreen> {
       return;
     }
 
-    // 2. Se bipou o LPN de uma HU deste pedido, abre a posição correspondente
     for (final g in groups) {
       final hasHu = g.tasks.any(
         (t) => t.lpn.toUpperCase() == barcode.toUpperCase(),
@@ -82,7 +79,7 @@ class _OrderPickingScreenState extends State<OrderPickingScreen> {
   Future<void> _openCamera() async {
     final code = await QrScannerDialog.scan(
       context,
-      title: 'Bipar Endereço ou HU do Pedido',
+      title: 'Bipar Endereço ou HU',
     );
     if (code != null && code.isNotEmpty && mounted) {
       _handleScannedBarcode(code);
@@ -131,10 +128,7 @@ class _OrderPickingScreenState extends State<OrderPickingScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(
-              'CANCELAR',
-              style: TextStyle(color: context.textSecondary),
-            ),
+            child: const Text('CANCELAR'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -168,6 +162,68 @@ class _OrderPickingScreenState extends State<OrderPickingScreen> {
     }
   }
 
+  Future<void> _handleFinalizeOrder() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: context.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(
+              LucideIcons.circle_check,
+              color: Color(0xFF10B981),
+              size: 22,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Finalizar Separação?',
+              style: TextStyle(color: context.textPrimary, fontSize: 16),
+            ),
+          ],
+        ),
+        content: Text(
+          'Confirma a finalização física de todos os itens deste pedido? A carga avançará para a próxima etapa.',
+          style: TextStyle(color: context.textSecondary, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('REVISAR MAIS'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+            ),
+            child: const Text(
+              'CONFIRMAR FINALIZAÇÃO',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final success = await context.read<PickingProvider>().finalizePicking(
+        widget.orderId,
+      );
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: Color(0xFF10B981),
+            content: Text('Separação concluída com sucesso!'),
+          ),
+        );
+        Navigator.of(context).pop();
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<PickingProvider>();
@@ -179,7 +235,6 @@ class _OrderPickingScreenState extends State<OrderPickingScreen> {
     final totalPicked = allOrderTasks
         .where((t) => t.isPicked)
         .fold(0.0, (s, t) => s + t.quantity);
-    final progress = totalExpected > 0 ? (totalPicked / totalExpected) : 0.0;
     final is100Percent = totalExpected > 0 && totalPicked >= totalExpected;
 
     return Scaffold(
@@ -234,7 +289,6 @@ class _OrderPickingScreenState extends State<OrderPickingScreen> {
             )
           : Column(
               children: [
-                // Barra de Progresso
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -251,14 +305,14 @@ class _OrderPickingScreenState extends State<OrderPickingScreen> {
                         children: [
                           Text(
                             is100Percent
-                                ? 'SEPARAÇÃO 100% CONCLUÍDA!'
+                                ? 'METAS ATINGIDAS (PRONTO PARA FINALIZAR)'
                                 : 'Progresso do Pedido:',
                             style: TextStyle(
                               color: is100Percent
                                   ? const Color(0xFF10B981)
                                   : context.textPrimary,
                               fontWeight: FontWeight.bold,
-                              fontSize: 13,
+                              fontSize: 12,
                             ),
                           ),
                           Text(
@@ -278,7 +332,9 @@ class _OrderPickingScreenState extends State<OrderPickingScreen> {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: LinearProgressIndicator(
-                          value: progress,
+                          value: totalExpected > 0
+                              ? (totalPicked / totalExpected)
+                              : 0,
                           backgroundColor: context.border,
                           valueColor: AlwaysStoppedAnimation<Color>(
                             is100Percent
@@ -291,195 +347,159 @@ class _OrderPickingScreenState extends State<OrderPickingScreen> {
                     ],
                   ),
                 ),
-
-                // Lista de Endereços do Pedido
                 Expanded(
-                  child: groups.isEmpty
-                      ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(24.0),
+                  child: ListView.separated(
+                    padding: const EdgeInsets.all(12),
+                    itemCount: groups.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                    itemBuilder: (context, idx) {
+                      final group = groups[idx];
+                      final isGroupDone = group.pendingTasksCount == 0;
+                      final distinctSkus = group.tasks
+                          .map((t) => t.skuCode)
+                          .toSet();
+
+                      return Material(
+                        color: context.card,
+                        borderRadius: BorderRadius.circular(12),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => _openLocation(group.locationPath),
+                          child: Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isGroupDone
+                                    ? const Color(0xFF10B981)
+                                    : const Color(0xFFF59E0B),
+                                width: isGroupDone ? 1 : 1.5,
+                              ),
+                            ),
                             child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Icon(
-                                  LucideIcons.circle_check,
-                                  size: 56,
-                                  color: Color(0xFF10B981),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          LucideIcons.map_pin,
+                                          size: 18,
+                                          color: isGroupDone
+                                              ? const Color(0xFF10B981)
+                                              : const Color(0xFFF59E0B),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          group.locationPath,
+                                          style: TextStyle(
+                                            color: context.textPrimary,
+                                            fontWeight: FontWeight.bold,
+                                            fontFamily: 'monospace',
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: isGroupDone
+                                            ? const Color(0xFF10B981)
+                                                  .withValues(alpha: 0.15)
+                                            : const Color(0xFFF59E0B)
+                                                  .withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: isGroupDone
+                                              ? const Color(0xFF10B981)
+                                              : const Color(0xFFF59E0B),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        isGroupDone
+                                            ? 'Concluído'
+                                            : '${group.pendingTasksCount} pendente(s)',
+                                        style: TextStyle(
+                                          color: isGroupDone
+                                              ? const Color(0xFF10B981)
+                                              : const Color(0xFFD97706),
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: 8),
                                 Text(
-                                  'Separação 100% Concluída!',
+                                  'Produtos: ${distinctSkus.join(", ")}',
                                   style: TextStyle(
                                     color: context.textPrimary,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Todos os itens deste pedido já foram recolhidos.',
+                                  isGroupDone
+                                      ? 'Itens recolhidos. Toque para revisar.'
+                                      : 'Pendente: ${group.totalPendingQuantity.toStringAsFixed(0)} un',
                                   style: TextStyle(
                                     color: context.textSecondary,
-                                    fontSize: 12,
+                                    fontSize: 11,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                        )
-                      : ListView.separated(
-                          padding: const EdgeInsets.all(12),
-                          itemCount: groups.length,
-                          separatorBuilder: (_, _) =>
-                              const SizedBox(height: 10),
-                          itemBuilder: (context, idx) {
-                            final group = groups[idx];
-                            final pendingCount = group.pendingTasksCount;
-                            final isGroupDone = pendingCount == 0;
-                            final distinctSkus = group.tasks
-                                .map((t) => t.skuCode)
-                                .toSet();
-
-                            return Material(
-                              color: context.card,
-                              borderRadius: BorderRadius.circular(12),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(12),
-                                onTap: () => _openLocation(group.locationPath),
-                                child: Container(
-                                  padding: const EdgeInsets.all(14),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: isGroupDone
-                                          ? const Color(0xFF10B981)
-                                          : const Color(0xFFF59E0B),
-                                      width: isGroupDone ? 1 : 1.5,
-                                    ),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Icon(
-                                                LucideIcons.map_pin,
-                                                size: 18,
-                                                color: isGroupDone
-                                                    ? const Color(0xFF10B981)
-                                                    : const Color(0xFFF59E0B),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Text(
-                                                group.locationPath,
-                                                style: TextStyle(
-                                                  color: context.textPrimary,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontFamily: 'monospace',
-                                                  fontSize: 15,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 3,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: isGroupDone
-                                                  ? const Color(0xFF10B981)
-                                                        .withValues(alpha: 0.15)
-                                                  : const Color(
-                                                      0xFFF59E0B,
-                                                    ).withValues(alpha: 0.15),
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
-                                              border: Border.all(
-                                                color: isGroupDone
-                                                    ? const Color(0xFF10B981)
-                                                    : const Color(0xFFF59E0B),
-                                              ),
-                                            ),
-                                            child: Text(
-                                              isGroupDone
-                                                  ? 'Concluído'
-                                                  : '$pendingCount pendente(s)',
-                                              style: TextStyle(
-                                                color: isGroupDone
-                                                    ? const Color(0xFF10B981)
-                                                    : const Color(0xFFD97706),
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        'Produtos: ${distinctSkus.join(", ")}',
-                                        style: TextStyle(
-                                          color: context.textPrimary,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        isGroupDone
-                                            ? 'Todos os volumes desta posição foram recolhidos.'
-                                            : 'Total pendente: ${group.totalPendingQuantity.toStringAsFixed(0)} un',
-                                        style: TextStyle(
-                                          color: context.textSecondary,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                      Divider(
-                                        color: context.border,
-                                        height: 16,
-                                      ),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.end,
-                                        children: [
-                                          Text(
-                                            isGroupDone
-                                                ? 'Revisar / Estornar'
-                                                : 'Acessar Endereço',
-                                            style: TextStyle(
-                                              color: isGroupDone
-                                                  ? const Color(0xFF10B981)
-                                                  : const Color(0xFFF59E0B),
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Icon(
-                                            LucideIcons.chevron_right,
-                                            size: 16,
-                                            color: isGroupDone
-                                                ? const Color(0xFF10B981)
-                                                : const Color(0xFFF59E0B),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
                         ),
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
+
+      // BOTÃO DE FINALIZAÇÃO EXPLÍCITA
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: context.card,
+          border: Border(top: BorderSide(color: context.border)),
+        ),
+        child: SafeArea(
+          child: SizedBox(
+            height: 48,
+            child: ElevatedButton.icon(
+              onPressed: is100Percent ? _handleFinalizeOrder : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              icon: const Icon(LucideIcons.circle_check, size: 18),
+              label: Text(
+                is100Percent
+                    ? 'FINALIZAR SEPARAÇÃO DO PEDIDO'
+                    : 'SEPARE TODOS OS ITENS ANTES DE FINALIZAR',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

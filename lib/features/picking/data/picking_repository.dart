@@ -97,4 +97,17 @@ class PickingRepository {
     );
     return response.statusCode == 200;
   }
+
+  /// Dispara a finalização explícita da separação do pedido
+  Future<Map<String, dynamic>?> finalizeOrderPicking(String orderId) async {
+    final response = await _api.dio.post(
+      '/api/outbound/picking/orders/$orderId/finalize',
+      data: {'orderId': orderId},
+    );
+
+    if (response.data is Map<String, dynamic>) {
+      return Map<String, dynamic>.from(response.data);
+    }
+    return null;
+  }
 }

@@ -37,10 +37,15 @@ class _OrderCheckingScreenState extends State<OrderCheckingScreen>
       context.read<CheckingProvider>().loadOrderTasks(widget.orderId);
     });
 
-    // Escuta o laser do Movfast Ranger 2 via Broadcast Intent
+    // Escuta o laser do Movfast Ranger 2 com trava estrita de rota ativa
     final scanner = context.read<ScannerService>();
     _scanSubscription = scanner.onScan.listen((barcode) {
       if (!mounted) return;
+
+      // TRAVA DE CONTEXTO: Ignora o bip se este ecrã não for a rota ativa no topo
+      final route = ModalRoute.of(context);
+      if (route == null || !route.isCurrent) return;
+
       _handleScan(barcode.trim());
     });
   }
@@ -85,6 +90,68 @@ class _OrderCheckingScreenState extends State<OrderCheckingScreen>
       _qtyController.text = '1';
     } else {
       HapticFeedback.heavyImpact();
+    }
+  }
+
+  Future<void> _handleFinalizeChecking() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: context.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(
+              LucideIcons.circle_check,
+              color: Color(0xFF10B981),
+              size: 22,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Liberar Expedição?',
+              style: TextStyle(color: context.textPrimary, fontSize: 16),
+            ),
+          ],
+        ),
+        content: Text(
+          'A carga foi validada com 0% de divergência. Deseja encerrar a conferência e liberar o pedido para emissão fiscal?',
+          style: TextStyle(color: context.textSecondary, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('REVISAR MAIS'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+            ),
+            child: const Text(
+              'LIBERAR EXPEDIÇÃO',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final success = await context.read<CheckingProvider>().finalizeChecking(
+        widget.orderId,
+      );
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: Color(0xFF10B981),
+            content: Text('Pedido 100% conferido e liberado para expedição!'),
+          ),
+        );
+        Navigator.of(context).pop();
+      }
     }
   }
 
@@ -170,6 +237,8 @@ class _OrderCheckingScreenState extends State<OrderCheckingScreen>
     final totalChk = details?.totalChecked ?? 0.0;
     final progress = totalExp > 0 ? (totalChk / totalExp).clamp(0.0, 1.0) : 0.0;
     final is100Percent = details?.isOrderFullyChecked ?? false;
+    final canFinalize =
+        is100Percent && (details?.hasFractionalPendingPacking != true);
 
     return Scaffold(
       appBar: AppBar(
@@ -470,16 +539,47 @@ class _OrderCheckingScreenState extends State<OrderCheckingScreen>
                   child: TabBarView(
                     controller: _tabController,
                     children: [
-                      // ABA 1: Volumes Físicos
                       _buildVolumesTab(details.volumes),
-
-                      // ABA 2: Itens por SKU
                       _buildItemsTab(details.items),
                     ],
                   ),
                 ),
               ],
             ),
+
+      // BARRA INFERIOR DE FINALIZAÇÃO EXPLÍCITA
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: context.card,
+          border: Border(top: BorderSide(color: context.border)),
+        ),
+        child: SafeArea(
+          child: SizedBox(
+            height: 48,
+            child: ElevatedButton.icon(
+              onPressed: canFinalize ? _handleFinalizeChecking : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              icon: const Icon(LucideIcons.clipboard_check, size: 18),
+              label: Text(
+                canFinalize
+                    ? 'CONCLUIR E LIBERAR EXPEDIÇÃO'
+                    : 'CONFERÊNCIA PENDENTE (0% DIVERGÊNCIA EXIGIDO)',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
