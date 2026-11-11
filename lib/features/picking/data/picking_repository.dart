@@ -27,9 +27,10 @@ class PickingRepository {
         items = data;
       }
 
+      // Filtra pedidos em estado de separação ativa ou em conferência simultânea
       return items.whereType<Map>().where((o) {
         final s = o['status']?.toString().toUpperCase() ?? '';
-        return s == 'ALLOCATED' || s == 'PICKING';
+        return s == 'ALLOCATED' || s == 'PICKING' || s == 'CHECKING';
       }).toList();
     } catch (e) {
       debugPrint('[PICKING] Erro ao listar pedidos: $e');
