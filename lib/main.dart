@@ -27,6 +27,8 @@ import 'features/packing/data/packing_repository.dart';
 import 'features/packing/presentation/packing_provider.dart';
 import 'features/checking/data/checking_repository.dart';
 import 'features/checking/presentation/checking_provider.dart';
+import 'features/cycle_count/data/cycle_count_repository.dart';
+import 'features/cycle_count/presentation/cycle_count_provider.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -47,6 +49,7 @@ void main() async {
   final pickingRepository = PickingRepository(api);
   final packingRepository = PackingRepository(api);
   final checkingRepository = CheckingRepository(api);
+  final cycleCountRepository = CycleCountRepository(api);
 
   final authProvider = AuthProvider(authRepository, storage);
 
@@ -89,6 +92,9 @@ void main() async {
         ),
         ChangeNotifierProvider(
           create: (_) => CheckingProvider(checkingRepository),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => CycleCountProvider(cycleCountRepository),
         ),
       ],
       child: const CoreWmsApp(),

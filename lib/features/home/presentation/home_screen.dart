@@ -14,6 +14,7 @@ import '../../allocation/presentation/allocation_orders_screen.dart';
 import '../../picking/presentation/picking_screen.dart';
 import '../../packing/presentation/packing_orders_list_screen.dart';
 import '../../checking/presentation/checking_orders_list_screen.dart';
+import '../../cycle_count/presentation/cycle_count_list_screen.dart';
 import 'widgets/menu_card.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -283,12 +284,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     MenuCard(
                       title: 'Inventário',
-                      subtitle: 'Contagem física cega agrupada por posição',
+                      subtitle: 'Contagem física cega e auditoria espontânea',
                       icon: LucideIcons.eye_off,
                       color: const Color(0xFFEC4899),
                       badge: 'AUDITORIA',
-                      isEnabled: _hasPermission(auth, 'cyclecount:execute'),
-                      onTap: () {},
+                      isEnabled: _hasPermission(auth, 'inventory:view'),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const CycleCountListScreen(),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
