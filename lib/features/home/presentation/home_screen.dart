@@ -15,6 +15,7 @@ import '../../picking/presentation/picking_screen.dart';
 import '../../packing/presentation/packing_orders_list_screen.dart';
 import '../../checking/presentation/checking_orders_list_screen.dart';
 import '../../cycle_count/presentation/cycle_count_list_screen.dart';
+import '../../yard/presentation/yard_management_screen.dart';
 import 'widgets/menu_card.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -184,16 +185,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   childAspectRatio: 1.05,
                   children: [
                     MenuCard(
-                      title: 'Gestão de HU',
-                      subtitle: 'Consulta, Mover, Merge, Split e Qualidade',
-                      icon: LucideIcons.box,
-                      color: const Color(0xFF3B82F6),
-                      badge: 'ESTOQUE',
-                      isEnabled: _hasPermission(auth, 'inventory:view'),
+                      title: 'Portaria e Pátio',
+                      subtitle: 'Check-in, docas e controle de veículos',
+                      icon: LucideIcons.truck,
+                      color: const Color(0xFF06B6D4), // Cyan
+                      badge: 'PORTARIA',
+                      isEnabled:
+                          _hasPermission(auth, 'yard:operate') ||
+                          _hasPermission(auth, 'yard:view'),
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (_) => const HuConsultationScreen(),
+                            builder: (_) => const YardManagementScreen(),
                           ),
                         );
                       },
@@ -293,6 +296,21 @@ class _HomeScreenState extends State<HomeScreen> {
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => const CycleCountListScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    MenuCard(
+                      title: 'Gestão de HU',
+                      subtitle: 'Consulta, Mover, Merge, Split e Qualidade',
+                      icon: LucideIcons.box,
+                      color: const Color(0xFF3B82F6),
+                      badge: 'ESTOQUE',
+                      isEnabled: _hasPermission(auth, 'inventory:view'),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const HuConsultationScreen(),
                           ),
                         );
                       },
