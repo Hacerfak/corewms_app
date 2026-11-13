@@ -23,7 +23,7 @@ class BlindLocationCountScreen extends StatefulWidget {
 
 class _BlindLocationCountScreenState extends State<BlindLocationCountScreen> {
   final _codeController = TextEditingController();
-  final _qtyController = TextEditingController(text: '1');
+  final _codeFocusNode = FocusNode();
   final List<BlindScanEntry> _entries = [];
   bool _isEmptyLocation = false;
   String? _localError;
@@ -35,14 +35,12 @@ class _BlindLocationCountScreenState extends State<BlindLocationCountScreen> {
     final scanner = context.read<ScannerService>();
     _scanSubscription = scanner.onScan.listen((barcode) {
       if (!mounted) return;
+      // Só processa o gatilho laser se esta tela estiver no topo (ignora enquanto o modal de Qtd estiver aberto)
       final route = ModalRoute.of(context);
       if (route == null || !route.isCurrent) return;
+
       if (!_isEmptyLocation) {
-        setState(() {
-          _codeController.text = barcode.trim().toUpperCase();
-          _localError = null;
-        });
-        HapticFeedback.lightImpact();
+        _proceedToQuantityStep(barcode.trim());
       }
     });
   }
@@ -51,41 +49,326 @@ class _BlindLocationCountScreenState extends State<BlindLocationCountScreen> {
   void dispose() {
     _scanSubscription?.cancel();
     _codeController.dispose();
-    _qtyController.dispose();
+    _codeFocusNode.dispose();
     super.dispose();
   }
 
-  void _addEntry() {
-    final code = _codeController.text.trim().toUpperCase();
-    if (code.isEmpty) {
+  /// PASSO 1 -> PASSO 2: Valida o código bipado/digitado e abre o modal de quantidade
+  Future<void> _proceedToQuantityStep(String rawCode) async {
+    final cleanCode = rawCode.trim().toUpperCase();
+    if (cleanCode.isEmpty) {
       setState(() => _localError = 'Bipe ou digite o LPN da HU ou SKU/EAN.');
       HapticFeedback.heavyImpact();
       return;
     }
 
-    final qty =
-        double.tryParse(_qtyController.text.trim().replaceAll(',', '.')) ?? 0;
-    if (qty <= 0) {
-      setState(() => _localError = 'A quantidade deve ser maior que zero.');
-      HapticFeedback.heavyImpact();
-      return;
-    }
-
     setState(() {
-      _entries.insert(
-        0,
-        BlindScanEntry(
-          id: DateTime.now().microsecondsSinceEpoch.toString(),
-          scannedCode: code,
-          quantity: qty,
-          scannedAt: DateTime.now(),
-        ),
-      );
-      _codeController.clear();
-      _qtyController.text = '1';
+      _codeController.text = cleanCode;
       _localError = null;
     });
-    HapticFeedback.mediumImpact();
+    HapticFeedback.lightImpact();
+
+    final qty = await _showQuantityPromptDialog(scannedCode: cleanCode);
+
+    if (!mounted) return;
+
+    if (qty != null && qty > 0) {
+      setState(() {
+        _entries.insert(
+          0,
+          BlindScanEntry(
+            id: DateTime.now().microsecondsSinceEpoch.toString(),
+            scannedCode: cleanCode,
+            quantity: qty,
+            scannedAt: DateTime.now(),
+          ),
+        );
+        _codeController.clear();
+        _localError = null;
+      });
+      HapticFeedback.mediumImpact();
+    } else {
+      // Se cancelou o modal, limpa o campo para nova leitura
+      setState(() {
+        _codeController.clear();
+      });
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_isEmptyLocation) {
+        _codeFocusNode.requestFocus();
+      }
+    });
+  }
+
+  /// PASSO 2: Modal ergonômico exclusivo para informar a quantidade do código lido
+  Future<double?> _showQuantityPromptDialog({
+    required String scannedCode,
+    double initialQuantity = 1,
+    bool isEditing = false,
+  }) {
+    final initialText = initialQuantity % 1 == 0
+        ? initialQuantity.toStringAsFixed(0)
+        : initialQuantity.toString();
+
+    final qtyController = TextEditingController(text: initialText)
+      ..selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: initialText.length,
+      );
+    String? dialogError;
+
+    return showDialog<double>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (dialogCtx, setDialogState) {
+            void confirmQty() {
+              final parsed = double.tryParse(
+                qtyController.text.trim().replaceAll(',', '.'),
+              );
+              if (parsed == null || parsed <= 0) {
+                setDialogState(() {
+                  dialogError = 'Informe uma quantidade maior que zero.';
+                });
+                HapticFeedback.heavyImpact();
+                return;
+              }
+              Navigator.of(dialogCtx).pop(parsed);
+            }
+
+            return Dialog(
+              backgroundColor: context.card,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              insetPadding: const EdgeInsets.all(16),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Cabeçalho
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEC4899)
+                                .withValues(alpha: context.isDark ? 0.2 : 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            LucideIcons.hash,
+                            color: Color(0xFFEC4899),
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isEditing
+                                    ? 'Editar Quantidade'
+                                    : 'Passo 2: Quantidade',
+                                style: TextStyle(
+                                  color: context.textPrimary,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                'Endereço: ${widget.locationTask.locationPath}',
+                                style: TextStyle(
+                                  color: context.textSecondary,
+                                  fontSize: 11,
+                                  fontFamily: 'monospace',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Card destacando o Código LPN / SKU bipado
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: context.cardSubtle,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: context.border),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'CÓDIGO IDENTIFICADO (LPN / SKU)',
+                            style: TextStyle(
+                              color: context.textSecondary,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(
+                                LucideIcons.barcode,
+                                color: Color(0xFFEC4899),
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  scannedCode,
+                                  style: TextStyle(
+                                    color: context.textPrimary,
+                                    fontFamily: 'monospace',
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    if (dialogError != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: const Color(0xFFEF4444)
+                                .withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: Text(
+                          dialogError!,
+                          style: const TextStyle(
+                            color: Color(0xFFEF4444),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+
+                    // Campo Numérico Amplo
+                    TextFormField(
+                      controller: qtyController,
+                      autofocus: true,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) => confirmQty(),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: context.textPrimary,
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'monospace',
+                      ),
+                      decoration: InputDecoration(
+                        labelText: 'Quantidade Contada *',
+                        suffixText: 'UN',
+                        suffixStyle: TextStyle(
+                          color: context.textSecondary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Botões de Ação
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.of(dialogCtx).pop(null),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              side: BorderSide(color: context.border),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: Text(
+                              'CANCELAR',
+                              style: TextStyle(
+                                color: context.textSecondary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton.icon(
+                            onPressed: confirmQty,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFEC4899),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            icon: const Icon(LucideIcons.plus, size: 18),
+                            label: Text(
+                              isEditing ? 'ATUALIZAR' : 'ADICIONAR ITEM',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _handleEditEntry(int index) async {
+    final entry = _entries[index];
+    final updatedQty = await _showQuantityPromptDialog(
+      scannedCode: entry.scannedCode,
+      initialQuantity: entry.quantity,
+      isEditing: true,
+    );
+
+    if (updatedQty != null && updatedQty > 0 && mounted) {
+      setState(() {
+        _entries[index] = BlindScanEntry(
+          id: entry.id,
+          scannedCode: entry.scannedCode,
+          quantity: updatedQty,
+          scannedAt: entry.scannedAt,
+        );
+      });
+      HapticFeedback.lightImpact();
+    }
   }
 
   Future<void> _handleCancelCounting() async {
@@ -277,34 +560,6 @@ class _BlindLocationCountScreenState extends State<BlindLocationCountScreen> {
       ),
       body: Column(
         children: [
-          // Banner de Auditoria Cega
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            color: const Color(0xFFEC4899).withValues(alpha: 0.1),
-            child: Row(
-              children: [
-                const Icon(
-                  LucideIcons.eye_off,
-                  color: Color(0xFFEC4899),
-                  size: 18,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Modo Cego Ativo: Bipe todas as HUs (LPN) ou SKUs encontrados fisicamente neste endereço.',
-                    style: TextStyle(
-                      color: context.isDark
-                          ? const Color(0xFFF9A8D4)
-                          : const Color(0xFF9D174D),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
           // Opção de Posição Vazia
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
@@ -316,7 +571,7 @@ class _BlindLocationCountScreenState extends State<BlindLocationCountScreen> {
               contentPadding: EdgeInsets.zero,
               activeThumbColor: const Color(0xFFEC4899),
               title: Text(
-                'Endereço Fisicamente Vazio (0 Unidades)',
+                'Endereço Fisicamente Vazio (0 Un)',
                 style: TextStyle(
                   color: context.textPrimary,
                   fontSize: 13,
@@ -338,7 +593,7 @@ class _BlindLocationCountScreenState extends State<BlindLocationCountScreen> {
             ),
           ),
 
-          // Formulário de Bipagem (quando não é posição vazia)
+          // PASSO 1: Leitura Exclusiva do Código (Tela Cheia / Largura Total)
           if (!_isEmptyLocation)
             Container(
               padding: const EdgeInsets.all(12),
@@ -347,10 +602,48 @@ class _BlindLocationCountScreenState extends State<BlindLocationCountScreen> {
                 border: Border(bottom: BorderSide(color: context.border)),
               ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEC4899)
+                              .withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        child: const Text(
+                          'PASSO 1',
+                          style: TextStyle(
+                            color: Color(0xFFEC4899),
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Bipe ou digite o LPN da HU ou SKU/EAN',
+                          style: TextStyle(
+                            color: context.textSecondary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
                   if (_localError != null || provider.errorMessage != null) ...[
                     Container(
                       padding: const EdgeInsets.all(8),
+                      margin: const EdgeInsets.only(bottom: 8),
                       decoration: BoxDecoration(
                         color: const Color(0xFFEF4444).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
@@ -366,83 +659,120 @@ class _BlindLocationCountScreenState extends State<BlindLocationCountScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 8),
                   ],
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: TextFormField(
-                          controller: _codeController,
-                          style: TextStyle(
-                            color: context.textPrimary,
-                            fontFamily: 'monospace',
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          decoration: InputDecoration(
-                            labelText: 'LPN da HU ou SKU/EAN',
-                            prefixIcon: const Icon(
-                              LucideIcons.scan,
-                              color: Color(0xFFEC4899),
-                              size: 18,
-                            ),
-                            suffixIcon: IconButton(
-                              icon: const Icon(
-                                LucideIcons.camera,
-                                color: Color(0xFFEC4899),
+
+                  TextFormField(
+                    controller: _codeController,
+                    focusNode: _codeFocusNode,
+                    textInputAction: TextInputAction.next,
+                    onFieldSubmitted: _proceedToQuantityStep,
+                    style: TextStyle(
+                      color: context.textPrimary,
+                      fontFamily: 'monospace',
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Aguardando bipagem...',
+                      prefixIcon: const Icon(
+                        LucideIcons.scan_line,
+                        color: Color(0xFFEC4899),
+                        size: 20,
+                      ),
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_codeController.text.isNotEmpty)
+                            IconButton(
+                              icon: Icon(
+                                LucideIcons.x,
+                                color: context.textSecondary,
                                 size: 18,
                               ),
-                              onPressed: () async {
-                                final code = await QrScannerDialog.scan(
-                                  context,
-                                  title: 'Bipar LPN ou SKU',
-                                );
-                                if (code != null && code.isNotEmpty) {
-                                  setState(
-                                    () => _codeController.text = code
-                                        .toUpperCase(),
-                                  );
-                                }
+                              onPressed: () {
+                                setState(() {
+                                  _codeController.clear();
+                                  _localError = null;
+                                });
                               },
                             ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        flex: 1,
-                        child: TextFormField(
-                          controller: _qtyController,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: context.textPrimary,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'monospace',
-                          ),
-                          decoration: const InputDecoration(labelText: 'Qtd'),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      SizedBox(
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: _addEntry,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFEC4899),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                          IconButton(
+                            icon: const Icon(
+                              LucideIcons.camera,
+                              color: Color(0xFFEC4899),
+                              size: 20,
                             ),
+                            tooltip: 'Ler via Câmera',
+                            onPressed: () async {
+                              final code = await QrScannerDialog.scan(
+                                context,
+                                title: 'Bipar LPN ou SKU',
+                              );
+                              if (code != null && code.isNotEmpty && mounted) {
+                                _proceedToQuantityStep(code);
+                              }
+                            },
                           ),
-                          child: const Icon(LucideIcons.plus, size: 18),
+                        ],
+                      ),
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                  const SizedBox(height: 8),
+
+                  SizedBox(
+                    height: 44,
+                    child: ElevatedButton.icon(
+                      onPressed: () =>
+                          _proceedToQuantityStep(_codeController.text),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFEC4899),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                    ],
+                      icon: const Icon(LucideIcons.arrow_right, size: 18),
+                      label: const Text(
+                        'INFORMAR QUANTIDADE',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // Cabeçalho da Lista de Leituras
+          if (!_isEmptyLocation && _entries.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: context.card,
+                border: Border(bottom: BorderSide(color: context.border)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Leituras Registradas (${_entries.length})',
+                    style: TextStyle(
+                      color: context.textSecondary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'Total: ${totalUnits.toStringAsFixed(0)} un',
+                    style: const TextStyle(
+                      color: Color(0xFF10B981),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'monospace',
+                    ),
                   ),
                 ],
               ),
@@ -482,11 +812,35 @@ class _BlindLocationCountScreenState extends State<BlindLocationCountScreen> {
                   )
                 : _entries.isEmpty
                 ? Center(
-                    child: Text(
-                      'Nenhuma leitura registrada nesta posição ainda.',
-                      style: TextStyle(
-                        color: context.textSecondary,
-                        fontSize: 12,
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            LucideIcons.eye_off,
+                            size: 42,
+                            color: context.textMuted,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Nenhuma leitura nesta posição ainda.',
+                            style: TextStyle(
+                              color: context.textSecondary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Bipe um LPN ou SKU acima para informar a quantidade.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: context.textMuted,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   )
@@ -496,20 +850,22 @@ class _BlindLocationCountScreenState extends State<BlindLocationCountScreen> {
                     separatorBuilder: (_, _) => const SizedBox(height: 8),
                     itemBuilder: (ctx, idx) {
                       final entry = _entries[idx];
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: context.card,
+                      return Material(
+                        color: context.card,
+                        borderRadius: BorderRadius.circular(10),
+                        child: InkWell(
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: context.border),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
+                          onTap: () => _handleEditEntry(idx),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: context.border),
+                            ),
+                            child: Row(
                               children: [
                                 const Icon(
                                   LucideIcons.barcode,
@@ -517,26 +873,37 @@ class _BlindLocationCountScreenState extends State<BlindLocationCountScreen> {
                                   size: 18,
                                 ),
                                 const SizedBox(width: 10),
-                                Text(
-                                  entry.scannedCode,
-                                  style: TextStyle(
-                                    color: context.textPrimary,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'monospace',
-                                    fontSize: 14,
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        entry.scannedCode,
+                                        style: TextStyle(
+                                          color: context.textPrimary,
+                                          fontWeight: FontWeight.bold,
+                                          fontFamily: 'monospace',
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      Text(
+                                        'Toque para editar quantidade',
+                                        style: TextStyle(
+                                          color: context.textMuted,
+                                          fontSize: 10,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ],
-                            ),
-                            Row(
-                              children: [
                                 Text(
                                   '${entry.quantity.toStringAsFixed(0)} un',
                                   style: const TextStyle(
                                     color: Color(0xFF10B981),
                                     fontWeight: FontWeight.bold,
                                     fontFamily: 'monospace',
-                                    fontSize: 14,
+                                    fontSize: 15,
                                   ),
                                 ),
                                 const SizedBox(width: 8),
@@ -544,7 +911,7 @@ class _BlindLocationCountScreenState extends State<BlindLocationCountScreen> {
                                   icon: const Icon(
                                     LucideIcons.trash,
                                     color: Color(0xFFEF4444),
-                                    size: 16,
+                                    size: 17,
                                   ),
                                   onPressed: () =>
                                       setState(() => _entries.removeAt(idx)),
@@ -553,7 +920,7 @@ class _BlindLocationCountScreenState extends State<BlindLocationCountScreen> {
                                 ),
                               ],
                             ),
-                          ],
+                          ),
                         ),
                       );
                     },
